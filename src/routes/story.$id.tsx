@@ -244,38 +244,13 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         </div>
 
         {last && !search && (
-          <div className="mt-8 bg-card border border-gold/30 rounded-xl p-6 shadow-card">
-            <h3 className="font-display text-xl mb-1">Wat gebeurt er nu?</h3>
-            <p className="text-sm text-muted-foreground mb-4">Kies een richting voor hoofdstuk {story.chapters.length + 1}.</p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {(last.choices ?? []).map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => generate(opt.label + (opt.description ? ` — ${opt.description}` : ""))}
-                  disabled={generating}
-                  className="text-left p-4 rounded-lg border border-border hover:border-gold hover:bg-gold/5 transition-all disabled:opacity-50"
-                >
-                  <div className="text-xs text-gold uppercase tracking-wide mb-1">Optie {i + 1}</div>
-                  <div className="font-semibold mb-1">{opt.label}</div>
-                  {opt.description && <div className="text-xs text-muted-foreground">{opt.description}</div>}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Input
-                value={customChoice}
-                onChange={(e) => setCustomChoice(e.target.value)}
-                placeholder="Of typ je eigen actie..."
-                disabled={generating}
-              />
-              <Button
-                variant="hero"
-                onClick={() => customChoice.trim() ? generate(customChoice) : generate()}
-                disabled={generating}
-              >
-                {generating ? <Loader2 className="animate-spin" /> : <Wand2 />} Volgend hoofdstuk
-              </Button>
-            </div>
+          <div className="mt-8">
+            <StoryDirector
+              storyId={storyId}
+              generating={generating}
+              quickChoices={last.choices}
+              onGenerate={generate}
+            />
           </div>
         )}
       </div>
