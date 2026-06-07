@@ -14,6 +14,7 @@ import { Route as NewRouteImport } from './routes/new'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StoryIdRouteImport } from './routes/story.$id'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryIdRoute = StoryIdRouteImport.update({
+  id: '/story/$id',
+  path: '/story/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/story/$id': typeof StoryIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/story/$id': typeof StoryIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,27 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/story/$id': typeof StoryIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/favorites' | '/library' | '/new' | '/settings'
+  fullPaths:
+    | '/'
+    | '/favorites'
+    | '/library'
+    | '/new'
+    | '/settings'
+    | '/story/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/favorites' | '/library' | '/new' | '/settings'
-  id: '__root__' | '/' | '/favorites' | '/library' | '/new' | '/settings'
+  to: '/' | '/favorites' | '/library' | '/new' | '/settings' | '/story/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/favorites'
+    | '/library'
+    | '/new'
+    | '/settings'
+    | '/story/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +99,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   NewRoute: typeof NewRoute
   SettingsRoute: typeof SettingsRoute
+  StoryIdRoute: typeof StoryIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/story/$id': {
+      id: '/story/$id'
+      path: '/story/$id'
+      fullPath: '/story/$id'
+      preLoaderRoute: typeof StoryIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +155,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   NewRoute: NewRoute,
   SettingsRoute: SettingsRoute,
+  StoryIdRoute: StoryIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
