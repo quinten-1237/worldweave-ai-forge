@@ -1,7 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateText, generateObject } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { getGateway, DEFAULT_MODEL } from "./ai-gateway.server";
+
+function extractJSON(raw: string): unknown {
+  let cleaned = raw
+    .replace(/^```json\s*/im, "")
+    .replace(/^```\s*/im, "")
+    .replace(/```\s*$/im, "")
+    .trim();
+  if (!cleaned.startsWith("{") && !cleaned.startsWith("[")) {
+    const objStart = cleaned.indexOf("{");
+    const arrStart = cleaned.indexOf("[");
+    const isArray = arrStart !== -1 && (objStart === -1 || arrStart < objStart);
+    const start = isArray ? arrStart : objStart;
+    const end = isArray ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("No JSON found in response");
+    cleaned = cleaned.slice(start, end + 1);
+  }
+  return JSON.parse(cleaned);
+}
 
 const CharacterSchema = z.object({
   name: z.string(),
@@ -25,27 +43,27 @@ export const generateCharacter = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const gateway = getGateway();
-    const { object } = await generateObject({
+    const { text } = await generateText({
       model: gateway(DEFAULT_MODEL),
-      schema: CharacterSchema,
       system:
-        "Je bent een meesterverteller die rijke, originele fantasy-personages bedenkt. Antwoord in het Nederlands.",
-      prompt: `Genereer een geheel nieuw, origineel personage dat past in dit verhaal.\n\nVerhaalcontext:\n${data.storyContext}\n\n${
-        data.hint ? `Hint: ${data.hint}` : ""
-      }\n\nWees creatief, gedetailleerd en geef diepgang.`,
+        "Je bent een meesterverteller die rijke, originele fantasy-personages bedenkt. Antwoord in het Nederlands. Geef ALLEEN geldige JSON terug, geen markdown of uitleg.",
+      prompt: `Genereer een geheel nieuw, origineel personage dat past in dit verhaal.
+
+Verhaalcontext:
+${data.storyContext}
+
+${data.hint ? `Hint: ${data.hint}` : ""}
+
+Antwoord met EEN JSON-object met deze velden (alle strings): name, age, gender, appearance, personality, motivations, goals, secrets, skills, relationships. Wees creatief en gedetailleerd.`,
     });
-    return object;
+    return CharacterSchema.parse(extractJSON(text));
   });
 
 const ChapterSchema = z.object({
   title: z.string(),
   content: z.string(),
-  choices: z
-    .array(z.object({ label: z.string(), description: z.string() }))
-    .length(3),
-  timelineEvents: z
-    .array(z.object({ title: z.string(), description: z.string() }))
-    .max(3),
+  choices: z.array(z.object({ label: z.string(), description: z.string() })).min(1),
+  timelineEvents: z.array(z.object({ title: z.string(), description: z.string() })).max(5),
 });
 
 export const generateChapter = createServerFn({ method: "POST" })
@@ -60,17 +78,11 @@ export const generateChapter = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const gateway = getGateway();
-    const { object } = await generateObject({
+    const { text } = await generateText({
       model: gateway(DEFAULT_MODEL),
-      schema: ChapterSchema,
-      system: `Je bent een bestseller fantasy-romanschrijver. Schrijf in het Nederlands meeslepende hoofdstukken met:
-- Levendige beschrijvingen en sfeer
-- Natuurlijke dialogen
-- Actie en spanningsopbouw
-- Karakterontwikkeling
-- Wereldinteractie
-Je schrijfstijl is vergelijkbaar met professionele fictieromans (Sanderson, Rothfuss, Martin).
-BELANGRIJK: het hoofdstuk MOET minimaal ${data.minWords} woorden bevatten. Houd alle eerdere gebeurtenissen, personages en wereldinformatie consistent.`,
+      system: `Je bent een bestseller fantasy-romanschrijver. Schrijf in het Nederlands meeslepende hoofdstukken (vergelijkbaar met Sanderson, Rothfuss, Martin).
+BELANGRIJK: het hoofdstuk MOET minimaal ${data.minWords} woorden bevatten. Houd alle eerdere gebeurtenissen, personages en wereldinformatie consistent.
+Geef ALLEEN geldige JSON terug, geen markdown fences of uitleg.`,
       prompt: `Schrijf hoofdstuk ${data.chapterNumber}.
 
 ==== WERELD- EN VERHAALCONTEXT ====
@@ -79,10 +91,17 @@ ${data.storyContext}
 ==== SAMENVATTING VAN EERDERE HOOFDSTUKKEN ====
 ${data.previousSummary || "(nog geen eerdere hoofdstukken — dit is hoofdstuk 1)"}
 
-${data.userChoice ? `==== KEUZE VAN DE LEZER VOOR DIT HOOFDSTUK ====\n${data.userChoice}\n` : ""}
+${data.userChoice ? `==== KEUZE VAN DE LEZER ====\n${data.userChoice}\n` : ""}
 
-Schrijf nu hoofdstuk ${data.chapterNumber} (minimaal ${data.minWords} woorden). Eindig met drie boeiende keuzes voor het volgende hoofdstuk en lijst de belangrijkste nieuwe gebeurtenissen voor de tijdlijn.`,
+Antwoord met EEN JSON-object met deze structuur:
+{
+  "title": "hoofdstuktitel",
+  "content": "volledige hoofdstuktekst van minimaal ${data.minWords} woorden",
+  "choices": [{"label":"...","description":"..."},{"label":"...","description":"..."},{"label":"...","description":"..."}],
+  "timelineEvents": [{"title":"...","description":"..."}]
+}`,
     });
+    const object = ChapterSchema.parse(extractJSON(text));
     const wordCount = object.content.trim().split(/\s+/).length;
     return { ...object, wordCount };
   });
