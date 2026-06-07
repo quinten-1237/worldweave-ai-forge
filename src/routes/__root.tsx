@@ -78,14 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Worldweave AI" },
+      { name: "description", content: "Story Weaver AI is an advanced AI storytelling platform for creating and generating full books." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Worldweave AI" },
+      { property: "og:description", content: "Story Weaver AI is an advanced AI storytelling platform for creating and generating full books." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Worldweave AI" },
+      { name: "twitter:description", content: "Story Weaver AI is an advanced AI storytelling platform for creating and generating full books." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4af8b2c2-9ab9-4d96-9d23-2edc31bb2ac0/id-preview-4dfef045--24ee6baa-3132-4c0f-9674-2a26cd91338b.lovable.app-1780845870051.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4af8b2c2-9ab9-4d96-9d23-2edc31bb2ac0/id-preview-4dfef045--24ee6baa-3132-4c0f-9674-2a26cd91338b.lovable.app-1780845870051.png" },
     ],
     links: [
       {
