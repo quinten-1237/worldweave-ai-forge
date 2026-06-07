@@ -73,6 +73,7 @@ export const generateChapter = createServerFn({ method: "POST" })
       previousSummary: z.string(),
       chapterNumber: z.number(),
       userChoice: z.string().optional(),
+      directorInstructions: z.string().optional(),
       minWords: z.number().default(1500),
     }),
   )
