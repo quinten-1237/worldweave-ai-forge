@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { StoryDirector, type DirectorPayload } from "@/components/StoryDirector";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter, generateImage } from "@/lib/ai.functions";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
