@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { StoryDirector, type DirectorPayload } from "@/components/StoryDirector";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter, generateImage } from "@/lib/ai.functions";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
@@ -169,7 +170,6 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
   const addTimelineEvent = useStoryStore((s) => s.addTimelineEvent);
   const genChapter = useServerFn(generateChapter);
   const [generating, setGenerating] = useState(false);
-  const [customChoice, setCustomChoice] = useState("");
   const [openChapter, setOpenChapter] = useState<string | null>(
     story.chapters[story.chapters.length - 1]?.id ?? null,
   );
@@ -182,17 +182,20 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
     );
   }, [story.chapters, search]);
 
-  const generate = async (userChoice?: string) => {
+  const generate = async (payload: DirectorPayload = { directorInstructions: "" }) => {
     setGenerating(true);
     try {
-      const ctx = buildStoryContext(story);
-      const prev = buildPreviousSummary(story);
+      // Re-read latest story for fresh context (director may have just added entities)
+      const fresh = useStoryStore.getState().stories.find((st) => st.id === storyId)!;
+      const ctx = buildStoryContext(fresh);
+      const prev = buildPreviousSummary(fresh);
       const result = await genChapter({
         data: {
           storyContext: ctx,
           previousSummary: prev,
-          chapterNumber: story.chapters.length + 1,
-          userChoice,
+          chapterNumber: fresh.chapters.length + 1,
+          userChoice: payload.userChoice,
+          directorInstructions: payload.directorInstructions || undefined,
         },
       });
       const newChap = addChapter(storyId, {
@@ -200,7 +203,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         content: result.content,
         wordCount: result.wordCount,
         choices: result.choices,
-        chosenOption: userChoice,
+        chosenOption: payload.userChoice,
       });
       for (const ev of result.timelineEvents ?? []) {
         addTimelineEvent(storyId, {
@@ -210,7 +213,6 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         });
       }
       setOpenChapter(newChap.id);
-      setCustomChoice("");
       toast.success(`Hoofdstuk ${newChap.number} klaar`);
     } catch (e) {
       toast.error("Kon hoofdstuk niet genereren: " + (e as Error).message);
@@ -242,38 +244,13 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         </div>
 
         {last && !search && (
-          <div className="mt-8 bg-card border border-gold/30 rounded-xl p-6 shadow-card">
-            <h3 className="font-display text-xl mb-1">Wat gebeurt er nu?</h3>
-            <p className="text-sm text-muted-foreground mb-4">Kies een richting voor hoofdstuk {story.chapters.length + 1}.</p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {(last.choices ?? []).map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => generate(opt.label + (opt.description ? ` — ${opt.description}` : ""))}
-                  disabled={generating}
-                  className="text-left p-4 rounded-lg border border-border hover:border-gold hover:bg-gold/5 transition-all disabled:opacity-50"
-                >
-                  <div className="text-xs text-gold uppercase tracking-wide mb-1">Optie {i + 1}</div>
-                  <div className="font-semibold mb-1">{opt.label}</div>
-                  {opt.description && <div className="text-xs text-muted-foreground">{opt.description}</div>}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Input
-                value={customChoice}
-                onChange={(e) => setCustomChoice(e.target.value)}
-                placeholder="Of typ je eigen actie..."
-                disabled={generating}
-              />
-              <Button
-                variant="hero"
-                onClick={() => customChoice.trim() ? generate(customChoice) : generate()}
-                disabled={generating}
-              >
-                {generating ? <Loader2 className="animate-spin" /> : <Wand2 />} Volgend hoofdstuk
-              </Button>
-            </div>
+          <div className="mt-8">
+            <StoryDirector
+              storyId={storyId}
+              generating={generating}
+              quickChoices={last.choices}
+              onGenerate={generate}
+            />
           </div>
         )}
       </div>

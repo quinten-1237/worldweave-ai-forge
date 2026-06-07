@@ -73,6 +73,7 @@ export const generateChapter = createServerFn({ method: "POST" })
       previousSummary: z.string(),
       chapterNumber: z.number(),
       userChoice: z.string().optional(),
+      directorInstructions: z.string().optional(),
       minWords: z.number().default(1500),
     }),
   )
@@ -92,6 +93,7 @@ ${data.storyContext}
 ${data.previousSummary || "(nog geen eerdere hoofdstukken — dit is hoofdstuk 1)"}
 
 ${data.userChoice ? `==== KEUZE VAN DE LEZER ====\n${data.userChoice}\n` : ""}
+${data.directorInstructions ? `==== STORY DIRECTOR — STRIKTE REGIE-INSTRUCTIES (verplicht naleven) ====\n${data.directorInstructions}\n` : ""}
 
 Antwoord met EEN JSON-object met deze structuur:
 {
