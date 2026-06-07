@@ -170,7 +170,6 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
   const addTimelineEvent = useStoryStore((s) => s.addTimelineEvent);
   const genChapter = useServerFn(generateChapter);
   const [generating, setGenerating] = useState(false);
-  const [customChoice, setCustomChoice] = useState("");
   const [openChapter, setOpenChapter] = useState<string | null>(
     story.chapters[story.chapters.length - 1]?.id ?? null,
   );
@@ -183,17 +182,20 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
     );
   }, [story.chapters, search]);
 
-  const generate = async (userChoice?: string) => {
+  const generate = async (payload: DirectorPayload = { directorInstructions: "" }) => {
     setGenerating(true);
     try {
-      const ctx = buildStoryContext(story);
-      const prev = buildPreviousSummary(story);
+      // Re-read latest story for fresh context (director may have just added entities)
+      const fresh = useStoryStore.getState().stories.find((st) => st.id === storyId)!;
+      const ctx = buildStoryContext(fresh);
+      const prev = buildPreviousSummary(fresh);
       const result = await genChapter({
         data: {
           storyContext: ctx,
           previousSummary: prev,
-          chapterNumber: story.chapters.length + 1,
-          userChoice,
+          chapterNumber: fresh.chapters.length + 1,
+          userChoice: payload.userChoice,
+          directorInstructions: payload.directorInstructions || undefined,
         },
       });
       const newChap = addChapter(storyId, {
@@ -201,7 +203,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         content: result.content,
         wordCount: result.wordCount,
         choices: result.choices,
-        chosenOption: userChoice,
+        chosenOption: payload.userChoice,
       });
       for (const ev of result.timelineEvents ?? []) {
         addTimelineEvent(storyId, {
@@ -211,7 +213,6 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         });
       }
       setOpenChapter(newChap.id);
-      setCustomChoice("");
       toast.success(`Hoofdstuk ${newChap.number} klaar`);
     } catch (e) {
       toast.error("Kon hoofdstuk niet genereren: " + (e as Error).message);
