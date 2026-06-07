@@ -9,7 +9,8 @@ export const Route = createFileRoute("/favorites")({
 });
 
 function Favorites() {
-  const favs = useStoryStore((s) => s.stories.filter((st) => st.favorite));
+  const stories = useStoryStore((s) => s.stories);
+  const favs = stories.filter((st) => st.favorite);
   return (
     <AppShell>
       <div className="px-6 md:px-12 py-10">
