@@ -14,7 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          accent_color: string
+          autosave: boolean
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          default_homepage: string
+          display_name: string | null
+          email_notifications: boolean
+          font_size: string
+          high_contrast: boolean
+          id: string
+          in_app_notifications: boolean
+          language: string
+          last_page: string | null
+          onboarded: boolean
+          reduced_motion: boolean
+          remember_last_page: boolean
+          theme: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          accent_color?: string
+          autosave?: boolean
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          default_homepage?: string
+          display_name?: string | null
+          email_notifications?: boolean
+          font_size?: string
+          high_contrast?: boolean
+          id: string
+          in_app_notifications?: boolean
+          language?: string
+          last_page?: string | null
+          onboarded?: boolean
+          reduced_motion?: boolean
+          remember_last_page?: boolean
+          theme?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          accent_color?: string
+          autosave?: boolean
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          default_homepage?: string
+          display_name?: string | null
+          email_notifications?: boolean
+          font_size?: string
+          high_contrast?: boolean
+          id?: string
+          in_app_notifications?: boolean
+          language?: string
+          last_page?: string | null
+          onboarded?: boolean
+          reduced_motion?: boolean
+          remember_last_page?: boolean
+          theme?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      stories: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          data: Json
+          id: string
+          is_favorite: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          data: Json
+          id?: string
+          is_favorite?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          is_favorite?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_images: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          mime_type: string | null
+          public_url: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          mime_type?: string | null
+          public_url: string
+          size_bytes?: number
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          mime_type?: string | null
+          public_url?: string
+          size_bytes?: number
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
