@@ -140,36 +140,6 @@ export const summarizeChapters = createServerFn({ method: "POST" })
     return { summary: text };
   });
 
-export const generateImage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ prompt: z.string().max(4_000), style: z.string().max(500).optional() }))
-  .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: `${data.style ?? "dark fantasy oil painting, dramatic lighting, highly detailed"}: ${data.prompt}`,
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
-    if (!res.ok) {
-      const rawBody = await res.text();
-      console.error(`[generateImage] upstream error ${res.status}: ${rawBody}`);
-      throw new Error("Image generation failed. Please try again later.");
-    }
-    const json = (await res.json()) as { data?: { b64_json?: string }[] };
-    const b64 = json.data?.[0]?.b64_json;
-    if (!b64) throw new Error("No image returned");
-    return { dataUrl: `data:image/png;base64,${b64}` };
-  });
+// AI image generation has been intentionally disabled.
+// Users upload their own images via the ImageUploader component.
+
