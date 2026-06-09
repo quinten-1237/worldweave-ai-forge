@@ -69,6 +69,7 @@ const ChapterSchema = z.object({
 });
 
 export const generateChapter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       storyContext: z.string(),
