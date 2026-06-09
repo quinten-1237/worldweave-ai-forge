@@ -338,10 +338,8 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
   const updateCharacter = useStoryStore((s) => s.updateCharacter);
   const removeCharacter = useStoryStore((s) => s.removeCharacter);
   const genChar = useServerFn(generateCharacter);
-  const genImg = useServerFn(generateImage);
   const [generating, setGenerating] = useState(false);
   const [editing, setEditing] = useState<Character | null>(null);
-  const [imgLoading, setImgLoading] = useState<string | null>(null);
 
   const filtered = story.characters.filter((c) =>
     !search || c.name.toLowerCase().includes(search.toLowerCase()),
@@ -357,21 +355,6 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
     } catch (e) {
       toast.error((e as Error).message);
     } finally { setGenerating(false); }
-  };
-
-  const portrait = async (c: Character) => {
-    setImgLoading(c.id);
-    try {
-      const r = await genImg({
-        data: {
-          prompt: `Portret van ${c.name}, ${c.appearance ?? ""}, ${c.personality ?? ""}`,
-          style: "epic fantasy character portrait, oil painting, cinematic dramatic lighting, ultra detailed",
-        },
-      });
-      updateCharacter(storyId, c.id, { portraitUrl: r.dataUrl });
-      toast.success("Portret klaar");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setImgLoading(null); }
   };
 
   return (
