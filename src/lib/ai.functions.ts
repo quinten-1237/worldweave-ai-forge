@@ -36,6 +36,7 @@ const CharacterSchema = z.object({
 });
 
 export const generateCharacter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       storyContext: z.string(),
