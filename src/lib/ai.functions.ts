@@ -133,6 +133,7 @@ export const summarizeChapters = createServerFn({ method: "POST" })
   });
 
 export const generateImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ prompt: z.string(), style: z.string().optional() }))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
@@ -155,8 +156,9 @@ export const generateImage = createServerFn({ method: "POST" })
       }),
     });
     if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Image gen failed: ${res.status} ${t}`);
+      const rawBody = await res.text();
+      console.error(`[generateImage] upstream error ${res.status}: ${rawBody}`);
+      throw new Error("Image generation failed. Please try again later.");
     }
     const json = (await res.json()) as { data?: { b64_json?: string }[] };
     const b64 = json.data?.[0]?.b64_json;
