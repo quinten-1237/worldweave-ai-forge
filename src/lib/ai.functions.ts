@@ -115,7 +115,15 @@ export const summarizeChapters = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      chapters: z.array(z.object({ number: z.number(), title: z.string(), content: z.string() })),
+      chapters: z
+        .array(
+          z.object({
+            number: z.number().int().min(1).max(500),
+            title: z.string().max(500),
+            content: z.string().max(50_000),
+          }),
+        )
+        .max(200),
     }),
   )
   .handler(async ({ data }) => {
