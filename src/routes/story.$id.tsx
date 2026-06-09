@@ -371,23 +371,13 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((c) => (
           <div key={c.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:border-gold/40 transition-all group">
-            <div className="aspect-[4/5] bg-secondary relative overflow-hidden">
-              {c.portraitUrl ? (
-                <img src={c.portraitUrl} alt={c.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Users className="h-12 w-12 opacity-30" />
-                </div>
-              )}
-              <button
-                onClick={() => portrait(c)}
-                disabled={imgLoading === c.id}
-                className="absolute bottom-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur hover:bg-gold hover:text-primary-foreground transition-colors"
-                title="Genereer portret"
-              >
-                {imgLoading === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <ImageUploader
+              value={c.portraitUrl ?? null}
+              onChange={(url) => updateCharacter(storyId, c.id, { portraitUrl: url ?? undefined })}
+              bucket="user-uploads"
+              aspect="portrait"
+              className="rounded-none"
+            />
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-display text-lg">{c.name}</h3>
