@@ -466,25 +466,9 @@ function LocationsTab({ storyId, search }: { storyId: string; search: string }) 
   const addLocation = useStoryStore((s) => s.addLocation);
   const updateLocation = useStoryStore((s) => s.updateLocation);
   const removeLocation = useStoryStore((s) => s.removeLocation);
-  const genImg = useServerFn(generateImage);
   const [editing, setEditing] = useState<Location | null>(null);
-  const [imgLoading, setImgLoading] = useState<string | null>(null);
 
   const filtered = story.locations.filter((l) => !search || l.name.toLowerCase().includes(search.toLowerCase()));
-
-  const image = async (l: Location) => {
-    setImgLoading(l.id);
-    try {
-      const r = await genImg({
-        data: {
-          prompt: `Landschap van ${l.name}. ${l.description ?? ""} ${l.climate ?? ""}`,
-          style: "epic fantasy environment concept art, breathtaking landscape, cinematic, ultra detailed",
-        },
-      });
-      updateLocation(storyId, l.id, { imageUrl: r.dataUrl });
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setImgLoading(null); }
-  };
 
   return (
     <div>
@@ -494,14 +478,13 @@ function LocationsTab({ storyId, search }: { storyId: string; search: string }) 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((l) => (
           <div key={l.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:border-gold/40 transition-all">
-            <div className="aspect-video bg-secondary relative">
-              {l.imageUrl ? <img src={l.imageUrl} alt={l.name} className="w-full h-full object-cover" /> : (
-                <div className="w-full h-full flex items-center justify-center"><MapPin className="h-10 w-10 text-muted-foreground opacity-30" /></div>
-              )}
-              <button onClick={() => image(l)} disabled={imgLoading === l.id} className="absolute bottom-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur hover:bg-gold hover:text-primary-foreground transition-colors">
-                {imgLoading === l.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <ImageUploader
+              value={l.imageUrl ?? null}
+              onChange={(url) => updateLocation(storyId, l.id, { imageUrl: url ?? undefined })}
+              bucket="user-uploads"
+              aspect="video"
+              className="rounded-none"
+            />
             <div className="p-4">
               <h3 className="font-display text-lg">{l.name}</h3>
               {l.climate && <p className="text-xs text-gold/80">{l.climate}</p>}
