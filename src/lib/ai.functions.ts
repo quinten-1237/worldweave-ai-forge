@@ -112,6 +112,7 @@ Antwoord met EEN JSON-object met deze structuur:
   });
 
 export const summarizeChapters = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       chapters: z.array(z.object({ number: z.number(), title: z.string(), content: z.string() })),
