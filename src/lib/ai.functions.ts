@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { getGateway, DEFAULT_MODEL } from "./ai-gateway.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function extractJSON(raw: string): unknown {
   let cleaned = raw
@@ -35,10 +36,11 @@ const CharacterSchema = z.object({
 });
 
 export const generateCharacter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      storyContext: z.string(),
-      hint: z.string().optional(),
+      storyContext: z.string().max(30_000),
+      hint: z.string().max(2_000).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -67,14 +69,15 @@ const ChapterSchema = z.object({
 });
 
 export const generateChapter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      storyContext: z.string(),
-      previousSummary: z.string(),
-      chapterNumber: z.number(),
-      userChoice: z.string().optional(),
-      directorInstructions: z.string().optional(),
-      minWords: z.number().default(1500),
+      storyContext: z.string().max(30_000),
+      previousSummary: z.string().max(15_000),
+      chapterNumber: z.number().int().min(1).max(500),
+      userChoice: z.string().max(2_000).optional(),
+      directorInstructions: z.string().max(5_000).optional(),
+      minWords: z.number().int().min(100).max(5_000).default(1500),
     }),
   )
   .handler(async ({ data }) => {
@@ -109,9 +112,18 @@ Antwoord met EEN JSON-object met deze structuur:
   });
 
 export const summarizeChapters = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      chapters: z.array(z.object({ number: z.number(), title: z.string(), content: z.string() })),
+      chapters: z
+        .array(
+          z.object({
+            number: z.number().int().min(1).max(500),
+            title: z.string().max(500),
+            content: z.string().max(50_000),
+          }),
+        )
+        .max(200),
     }),
   )
   .handler(async ({ data }) => {
@@ -129,7 +141,8 @@ export const summarizeChapters = createServerFn({ method: "POST" })
   });
 
 export const generateImage = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ prompt: z.string(), style: z.string().optional() }))
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ prompt: z.string().max(4_000), style: z.string().max(500).optional() }))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
@@ -151,8 +164,9 @@ export const generateImage = createServerFn({ method: "POST" })
       }),
     });
     if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Image gen failed: ${res.status} ${t}`);
+      const rawBody = await res.text();
+      console.error(`[generateImage] upstream error ${res.status}: ${rawBody}`);
+      throw new Error("Image generation failed. Please try again later.");
     }
     const json = (await res.json()) as { data?: { b64_json?: string }[] };
     const b64 = json.data?.[0]?.b64_json;
