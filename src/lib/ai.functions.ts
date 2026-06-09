@@ -72,12 +72,12 @@ export const generateChapter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      storyContext: z.string(),
-      previousSummary: z.string(),
-      chapterNumber: z.number(),
-      userChoice: z.string().optional(),
-      directorInstructions: z.string().optional(),
-      minWords: z.number().default(1500),
+      storyContext: z.string().max(30_000),
+      previousSummary: z.string().max(15_000),
+      chapterNumber: z.number().int().min(1).max(500),
+      userChoice: z.string().max(2_000).optional(),
+      directorInstructions: z.string().max(5_000).optional(),
+      minWords: z.number().int().min(100).max(5_000).default(1500),
     }),
   )
   .handler(async ({ data }) => {
