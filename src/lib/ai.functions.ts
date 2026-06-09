@@ -39,8 +39,8 @@ export const generateCharacter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      storyContext: z.string(),
-      hint: z.string().optional(),
+      storyContext: z.string().max(30_000),
+      hint: z.string().max(2_000).optional(),
     }),
   )
   .handler(async ({ data }) => {
