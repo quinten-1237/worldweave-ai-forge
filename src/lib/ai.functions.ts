@@ -142,7 +142,7 @@ export const summarizeChapters = createServerFn({ method: "POST" })
 
 export const generateImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ prompt: z.string(), style: z.string().optional() }))
+  .inputValidator(z.object({ prompt: z.string().max(4_000), style: z.string().max(500).optional() }))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
