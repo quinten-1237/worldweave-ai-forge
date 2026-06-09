@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { StoryDirector, type DirectorPayload } from "@/components/StoryDirector";
 import { useStoryStore } from "@/store/storyStore";
-import { generateChapter, generateCharacter, generateImage } from "@/lib/ai.functions";
+import { generateChapter, generateCharacter } from "@/lib/ai.functions";
+import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
 import { toast } from "sonner";
@@ -337,10 +338,8 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
   const updateCharacter = useStoryStore((s) => s.updateCharacter);
   const removeCharacter = useStoryStore((s) => s.removeCharacter);
   const genChar = useServerFn(generateCharacter);
-  const genImg = useServerFn(generateImage);
   const [generating, setGenerating] = useState(false);
   const [editing, setEditing] = useState<Character | null>(null);
-  const [imgLoading, setImgLoading] = useState<string | null>(null);
 
   const filtered = story.characters.filter((c) =>
     !search || c.name.toLowerCase().includes(search.toLowerCase()),
@@ -358,21 +357,6 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
     } finally { setGenerating(false); }
   };
 
-  const portrait = async (c: Character) => {
-    setImgLoading(c.id);
-    try {
-      const r = await genImg({
-        data: {
-          prompt: `Portret van ${c.name}, ${c.appearance ?? ""}, ${c.personality ?? ""}`,
-          style: "epic fantasy character portrait, oil painting, cinematic dramatic lighting, ultra detailed",
-        },
-      });
-      updateCharacter(storyId, c.id, { portraitUrl: r.dataUrl });
-      toast.success("Portret klaar");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setImgLoading(null); }
-  };
-
   return (
     <div>
       <div className="flex flex-wrap gap-2 mb-6">
@@ -387,23 +371,13 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((c) => (
           <div key={c.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:border-gold/40 transition-all group">
-            <div className="aspect-[4/5] bg-secondary relative overflow-hidden">
-              {c.portraitUrl ? (
-                <img src={c.portraitUrl} alt={c.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Users className="h-12 w-12 opacity-30" />
-                </div>
-              )}
-              <button
-                onClick={() => portrait(c)}
-                disabled={imgLoading === c.id}
-                className="absolute bottom-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur hover:bg-gold hover:text-primary-foreground transition-colors"
-                title="Genereer portret"
-              >
-                {imgLoading === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <ImageUploader
+              value={c.portraitUrl ?? null}
+              onChange={(url) => updateCharacter(storyId, c.id, { portraitUrl: url ?? undefined })}
+              bucket="user-uploads"
+              aspect="portrait"
+              className="rounded-none"
+            />
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-display text-lg">{c.name}</h3>
@@ -492,25 +466,9 @@ function LocationsTab({ storyId, search }: { storyId: string; search: string }) 
   const addLocation = useStoryStore((s) => s.addLocation);
   const updateLocation = useStoryStore((s) => s.updateLocation);
   const removeLocation = useStoryStore((s) => s.removeLocation);
-  const genImg = useServerFn(generateImage);
   const [editing, setEditing] = useState<Location | null>(null);
-  const [imgLoading, setImgLoading] = useState<string | null>(null);
 
   const filtered = story.locations.filter((l) => !search || l.name.toLowerCase().includes(search.toLowerCase()));
-
-  const image = async (l: Location) => {
-    setImgLoading(l.id);
-    try {
-      const r = await genImg({
-        data: {
-          prompt: `Landschap van ${l.name}. ${l.description ?? ""} ${l.climate ?? ""}`,
-          style: "epic fantasy environment concept art, breathtaking landscape, cinematic, ultra detailed",
-        },
-      });
-      updateLocation(storyId, l.id, { imageUrl: r.dataUrl });
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setImgLoading(null); }
-  };
 
   return (
     <div>
@@ -520,14 +478,13 @@ function LocationsTab({ storyId, search }: { storyId: string; search: string }) 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((l) => (
           <div key={l.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:border-gold/40 transition-all">
-            <div className="aspect-video bg-secondary relative">
-              {l.imageUrl ? <img src={l.imageUrl} alt={l.name} className="w-full h-full object-cover" /> : (
-                <div className="w-full h-full flex items-center justify-center"><MapPin className="h-10 w-10 text-muted-foreground opacity-30" /></div>
-              )}
-              <button onClick={() => image(l)} disabled={imgLoading === l.id} className="absolute bottom-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur hover:bg-gold hover:text-primary-foreground transition-colors">
-                {imgLoading === l.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <ImageUploader
+              value={l.imageUrl ?? null}
+              onChange={(url) => updateLocation(storyId, l.id, { imageUrl: url ?? undefined })}
+              bucket="user-uploads"
+              aspect="video"
+              className="rounded-none"
+            />
             <div className="p-4">
               <h3 className="font-display text-lg">{l.name}</h3>
               {l.climate && <p className="text-xs text-gold/80">{l.climate}</p>}
