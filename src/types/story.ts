@@ -14,6 +14,9 @@ export interface Character {
   relationships?: string;
   status: CharacterStatus;
   portraitUrl?: string;
+  currentLocationId?: string;
+  injuries?: string[];
+
 }
 
 export interface Location {
