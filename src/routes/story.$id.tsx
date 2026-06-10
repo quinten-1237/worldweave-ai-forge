@@ -12,14 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { StoryDirector, type DirectorPayload } from "@/components/StoryDirector";
+import { ChapterPlanner } from "@/components/ChapterPlanner";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
+import { deriveContinuity, continuityToText } from "@/lib/continuity";
+import { type ChapterPlan, planToInstructions, LENGTH_WORDS, resolvePlanedAssignments } from "@/lib/chapter-plan";
 import { toast } from "sonner";
 import type { Character, Location, Faction, Chapter } from "@/types/story";
+
 
 export const Route = createFileRoute("/story/$id")({
   head: ({ params }) => ({ meta: [{ title: `Verhaal — StoryForge AI` }, { name: "story-id", content: params.id }] }),
@@ -168,7 +171,9 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
   const story = useStoryStore((s) => s.stories.find((st) => st.id === storyId)!);
   const addChapter = useStoryStore((s) => s.addChapter);
   const updateChapter = useStoryStore((s) => s.updateChapter);
+  const addLocation = useStoryStore((s) => s.addLocation);
   const addTimelineEvent = useStoryStore((s) => s.addTimelineEvent);
+  const applyChapterOutcome = useStoryStore((s) => s.applyChapterOutcome);
   const genChapter = useServerFn(generateChapter);
   const [generating, setGenerating] = useState(false);
   const [openChapter, setOpenChapter] = useState<string | null>(
@@ -183,36 +188,55 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
     );
   }, [story.chapters, search]);
 
-  const generate = async (payload: DirectorPayload = { directorInstructions: "" }) => {
+  const generate = async (plan: ChapterPlan) => {
     setGenerating(true);
     try {
-      // Re-read latest story for fresh context (director may have just added entities)
+      // 1. Persist any brand-new locations before generation so they exist in context
+      const createdLocs = [];
+      for (const nl of plan.newLocations) {
+        if (!nl.name.trim()) continue;
+        createdLocs.push(addLocation(storyId, {
+          name: nl.name,
+          description: nl.description,
+          climate: nl.climate,
+        }));
+      }
+
+      // 2. Re-read latest story (with new locations applied)
       const fresh = useStoryStore.getState().stories.find((st) => st.id === storyId)!;
       const ctx = buildStoryContext(fresh);
       const prev = buildPreviousSummary(fresh);
+      const continuity = continuityToText(deriveContinuity(fresh));
+      const directorInstructions = planToInstructions(plan, fresh);
+
       const result = await genChapter({
         data: {
           storyContext: ctx,
           previousSummary: prev,
           chapterNumber: fresh.chapters.length + 1,
-          userChoice: payload.userChoice,
-          directorInstructions: payload.directorInstructions || undefined,
+          userChoice: plan.userChoice,
+          directorInstructions,
+          continuity,
+          minWords: LENGTH_WORDS[plan.length],
         },
       });
+
       const newChap = addChapter(storyId, {
         title: result.title,
         content: result.content,
         wordCount: result.wordCount,
         choices: result.choices,
-        chosenOption: payload.userChoice,
+        chosenOption: plan.userChoice,
+        plan,
       });
       for (const ev of result.timelineEvents ?? []) {
-        addTimelineEvent(storyId, {
-          chapterId: newChap.id,
-          title: ev.title,
-          description: ev.description,
-        });
+        addTimelineEvent(storyId, { chapterId: newChap.id, title: ev.title, description: ev.description });
       }
+
+      // 3. Apply continuity outcome: character locations + relationships
+      const assignments = resolvePlanedAssignments(plan, fresh, createdLocs);
+      applyChapterOutcome(storyId, newChap.number, assignments, plan.relationshipChanges);
+
       setOpenChapter(newChap.id);
       toast.success(`Hoofdstuk ${newChap.number} klaar`);
     } catch (e) {
@@ -222,19 +246,14 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
     }
   };
 
-  const last = story.chapters[story.chapters.length - 1];
-
   return (
     <div className="grid lg:grid-cols-[1fr,320px] gap-8">
       <div>
         {filtered.length === 0 && !search && (
-          <div className="border border-dashed border-gold/30 rounded-xl p-10 text-center bg-card/30">
+          <div className="border border-dashed border-gold/30 rounded-xl p-6 text-center bg-card/30 mb-6">
             <Sparkles className="h-10 w-10 mx-auto text-gold mb-3" />
-            <h3 className="font-display text-2xl mb-2">Begin je epische verhaal</h3>
-            <p className="text-muted-foreground mb-6">De AI gebruikt al je personages, locaties en wereld.</p>
-            <Button variant="hero" size="xl" onClick={() => generate()} disabled={generating}>
-              {generating ? <><Loader2 className="animate-spin" /> Schrijven...</> : <><Wand2 /> Start Verhaal</>}
-            </Button>
+            <h3 className="font-display text-2xl mb-1">Begin je epische verhaal</h3>
+            <p className="text-muted-foreground">Plan hieronder hoofdstuk 1 in detail en laat de AI het schrijven.</p>
           </div>
         )}
 
@@ -244,14 +263,9 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
           ))}
         </div>
 
-        {last && !search && (
+        {!search && (
           <div className="mt-8">
-            <StoryDirector
-              storyId={storyId}
-              generating={generating}
-              quickChoices={last.choices}
-              onGenerate={generate}
-            />
+            <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
           </div>
         )}
       </div>
@@ -278,6 +292,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
     </div>
   );
 }
+
 
 function ChapterCard({
   chapter, open, onToggle, onUpdate,
