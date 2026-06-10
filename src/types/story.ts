@@ -57,7 +57,19 @@ export interface Chapter {
   choices?: { label: string; description?: string }[];
   chosenOption?: string;
   createdAt: number;
+  plan?: import("@/lib/chapter-plan").ChapterPlan;
 }
+
+export interface StoryRelationship {
+  id: string;
+  a: string;
+  b: string;
+  type: string;
+  note?: string;
+  chapterNumber?: number;
+  createdAt: number;
+}
+
 
 export interface TimelineEvent {
   id: string;
