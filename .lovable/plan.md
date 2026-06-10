@@ -1,64 +1,62 @@
+## Goal
 
-# StoryForge AI — Volledige uitbreiding
+Replace the current "Story Director" panel with a full **Chapter Planner** that runs before every chapter (1, 2, 3, …) and gives the user the same level of control each time — like a TV-series episode planner.
 
-Grote build. Ik activeer Lovable Cloud en bouw alles in één doorloop (2FA en active-sessions komen later, zoals afgesproken).
+## New Chapter Planner UI
 
-## Fase 1 — Backend & data
-- **Lovable Cloud aanzetten** (Supabase onder de motorkap).
-- **DB**:
-  - `profiles` (id → auth.users, display_name, username, bio, avatar_url, language, theme, accent_color, font_size, high_contrast, reduced_motion, email_notifications, in_app_notifications, autosave, default_homepage, remember_last_page, last_page)
-  - `user_images` (id, user_id, storage_path, public_url, label, created_at) — voor uploads buiten avatar
-  - RLS: alleen eigenaar lees/schrijf. Service-role grants. Trigger maakt automatisch profile aan bij signup.
-- **Storage buckets**: `avatars` (public), `user-uploads` (public, met RLS-policies op storage.objects).
+A single screen, opened by a "Plan & Generate Chapter N" button on the Chapters tab. Six collapsible panels:
 
-## Fase 2 — Auth
-- `/auth` route met Email+Password (signup/login) en **Google Sign-In** via `lovable.auth.signInWithOAuth("google")`.
-- `supabase--configure_social_auth` voor Google.
-- `_authenticated/` layout-gate (integration-managed).
-- Bestaande verhalen blijven werken voor ingelogde gebruikers; localStorage-store wordt per-user namespaced.
+1. **Characters** — per character: Not present / Background / Supporting / Main, plus toggles "Has dialogue", "Viewpoint character", "Key scene".
+2. **Locations** — multi-select existing locations + inline "create new location" form. Chapter can span multiple locations.
+3. **Character → Location assignment** — for each included character, dropdown of selected locations. Characters only appear where assigned. Defaults to their last known location (continuity).
+4. **Events** — checkbox grid grouped by category (Political, Military, Personal, Fantasy) with a free-text "custom event" field. Multi-select.
+5. **Story goals** — multi-select chips (Character development, Worldbuilding, Political intrigue, Romance, War prep, Mystery, Adventure, Action, Horror…).
+6. **Relationship changes** — repeatable row: Character A + Character B + change type (Become friends / enemies / Romance starts / ends / Alliance / Trust broken / Custom).
+7. **Chapter length** — Short 1000 / Medium 2000 / Long 3000 / Epic 5000+.
+8. **Extra instructions** — free-text.
 
-## Fase 3 — Welkomstscherm & i18n
-- **WelcomeScreen** bij eerste bezoek: taalkeuze (EN default, NL, FR, DE, ES) → opgeslagen in profile + localStorage.
-- **i18n systeem**: lichte custom hook (`useT`) met dictionaries per taal — geen zware lib. Alle UI-strings vertaald in 5 talen. Live switchen.
+Bottom bar: **Save preset**, **Load preset**, **Duplicate previous chapter setup**, **Generate Chapter**.
 
-## Fase 4 — Thema & accessibility
-- **ThemeProvider**: light / dark / system. Persist in profile + `localStorage`.
-- **Accent color picker** → CSS variable update.
-- **Font size** (sm/md/lg) → root font-size class.
-- **High contrast** → extra CSS class.
-- **Reduced motion** → respecteert OS + override.
+## Continuity engine
 
-## Fase 5 — Settings volledig werkend
-Tab-layout met secties:
-- Appearance (thema, accent, theme preview)
-- Language
-- Account (username, email via `updateUser`, password change, **delete account** via server fn met admin client)
-- Notifications (toggles → profile)
-- Privacy (download data als JSON, delete personal data)
-- Accessibility (font size, contrast, reduced motion)
-- Storage (gebruik + lijst uploads + delete)
-- Profile (avatar upload, display name, bio)
-- Preferences (autosave, default homepage, remember last page)
-- Security (alleen "Change password" + logout; 2FA/sessions → later)
+A new `src/lib/continuity.ts` derives, from existing chapters + timeline + character status:
+- last known location per character (tracked as `currentLocationId` updated after each chapter),
+- alive/dead/missing status (already stored),
+- active alliances / conflicts / ongoing plots / injuries (extracted from timeline events tagged by type).
 
-## Fase 6 — Image uploads
-- `<ImageUploader>` component: file-input (JPG/JPEG/PNG/WEBP), preview, replace, delete.
-- Upload via Supabase storage → public URL → opgeslagen in `user_images` of direct in `stories.coverUrl`.
-- Stories krijgen optioneel `coverImageUrl`; character/location entries krijgen `imageUrl`.
-- **Geen AI-image-generatie** — alleen user upload.
+The planner pre-fills character locations from this. The generator prompt receives a "Continuity facts" block so characters never teleport, dead stay dead, etc.
 
-## Fase 7 — UX polish
-- Persistente sessies (Supabase default).
-- Sonner-toasts in juiste taal.
-- Loading-skeletons.
-- Mobile sidebar (Sheet) toegevoegd aan AppShell.
+## Data model additions
 
-## Technische notities
-- Alle server-fn's met `requireSupabaseAuth` waar nodig.
-- Story-store wordt hybride: schrijft naar Supabase (`stories`-tabel) wanneer ingelogd, anders blijft localStorage werken (gast-modus).
-- Migratie: bij eerste login worden lokale verhalen optioneel geüpload.
+- `Character.currentLocationId?: string`, `Character.injuries?: string[]`.
+- `Story.relationships: { id, a, b, type, since }[]`.
+- `Story.chapterPresets: ChapterPlan[]` (saved configurations).
+- `Chapter.plan?: ChapterPlan` (snapshot of what generated it, used for "Duplicate previous setup").
+- `ChapterPlan`: characters[{id, role, dialogue, viewpoint, keyScene, locationId}], locationIds[], newLocations[], events[], goals[], relationshipChanges[], length, extra.
 
-## Geschatte impact
-~25-35 nieuwe/aangepaste bestanden, 1 grote migratie. Daarna run ik een security-scan.
+All persisted in the existing zustand store (no DB schema change needed — stories already serialize as JSONB).
 
-Akkoord om te starten?
+## Generator changes
+
+`generateChapter` server fn gains `plan: ChapterPlan` and `continuity: ContinuityFacts` inputs. The prompt builder composes a strict directive block: required characters per location, forbidden characters, mandatory events, goals, target word count, relationship transitions to depict, and continuity facts. After generation, post-processing updates each included character's `currentLocationId` to their assigned location and appends relationship changes to `story.relationships`.
+
+## Files
+
+New:
+- `src/components/ChapterPlanner.tsx` — the planner UI (replaces StoryDirector usage).
+- `src/lib/continuity.ts` — derive continuity facts + apply post-chapter updates.
+- `src/lib/chapter-plan.ts` — types + prompt serialization + preset save/load helpers.
+
+Edited:
+- `src/types/story.ts` — add fields above.
+- `src/store/storyStore.ts` — actions: `saveChapterPreset`, `deleteChapterPreset`, `applyChapterOutcome` (locations, relationships).
+- `src/lib/ai.functions.ts` — extend `generateChapter` input schema + prompt with plan & continuity.
+- `src/lib/story-context.ts` — include relationships + continuity in context.
+- `src/routes/story.$id.tsx` — swap `<StoryDirector>` for `<ChapterPlanner>`; first chapter uses the same planner (no special case).
+- `src/components/StoryDirector.tsx` — removed (superseded).
+
+## Out of scope
+
+- No backend schema migration (everything fits in the existing `stories.data` JSONB).
+- Image generation stays disabled (per earlier requirement).
+- No translation pass — UI stays in the existing Dutch.

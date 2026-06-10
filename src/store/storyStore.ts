@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Story, Character, Location, Faction, Chapter, TimelineEvent } from "@/types/story";
+import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship } from "@/types/story";
+import type { ChapterPlan, ChapterPreset, RelationshipChange } from "@/lib/chapter-plan";
+
 
 function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -30,8 +32,18 @@ interface State {
 
   addTimelineEvent: (storyId: string, e: Omit<TimelineEvent, "id" | "createdAt">) => void;
 
+  saveChapterPreset: (storyId: string, name: string, plan: ChapterPlan) => void;
+  deleteChapterPreset: (storyId: string, presetId: string) => void;
+  applyChapterOutcome: (
+    storyId: string,
+    chapterNumber: number,
+    assignments: { characterId: string; locationId: string }[],
+    relationshipChanges: RelationshipChange[],
+  ) => void;
+
   importStory: (story: Story) => void;
 }
+
 
 export const useStoryStore = create<State>()(
   persist(
@@ -224,6 +236,59 @@ export const useStoryStore = create<State>()(
           ),
         })),
 
+      saveChapterPreset: (storyId, name, plan) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  chapterPresets: [
+                    ...(st.chapterPresets ?? []),
+                    { id: uid(), name, createdAt: Date.now(), plan },
+                  ],
+                }
+              : st,
+          ),
+        })),
+
+      deleteChapterPreset: (storyId, presetId) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  chapterPresets: (st.chapterPresets ?? []).filter((p) => p.id !== presetId),
+                }
+              : st,
+          ),
+        })),
+
+      applyChapterOutcome: (storyId, chapterNumber, assignments, relationshipChanges) =>
+        set((s) => ({
+          stories: s.stories.map((st) => {
+            if (st.id !== storyId) return st;
+            const assignMap = new Map(assignments.map((a) => [a.characterId, a.locationId]));
+            const characters = st.characters.map((c) =>
+              assignMap.has(c.id) ? { ...c, currentLocationId: assignMap.get(c.id) } : c,
+            );
+            const newRels: StoryRelationship[] = relationshipChanges.map((r) => ({
+              id: uid(),
+              a: r.a,
+              b: r.b,
+              type: r.type,
+              note: r.note,
+              chapterNumber,
+              createdAt: Date.now(),
+            }));
+            return {
+              ...st,
+              characters,
+              relationships: [...(st.relationships ?? []), ...newRels],
+              updatedAt: Date.now(),
+            };
+          }),
+        })),
+
       importStory: (story) =>
         set((s) => ({ stories: [{ ...story, id: uid() }, ...s.stories] })),
     }),
@@ -235,3 +300,4 @@ export const useStoryStore = create<State>()(
     },
   ),
 );
+

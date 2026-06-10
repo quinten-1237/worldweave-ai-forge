@@ -76,8 +76,9 @@ export const generateChapter = createServerFn({ method: "POST" })
       previousSummary: z.string().max(15_000),
       chapterNumber: z.number().int().min(1).max(500),
       userChoice: z.string().max(2_000).optional(),
-      directorInstructions: z.string().max(5_000).optional(),
-      minWords: z.number().int().min(100).max(5_000).default(1500),
+      directorInstructions: z.string().max(10_000).optional(),
+      continuity: z.string().max(10_000).optional(),
+      minWords: z.number().int().min(100).max(8_000).default(1500),
     }),
   )
   .handler(async ({ data }) => {
@@ -86,6 +87,7 @@ export const generateChapter = createServerFn({ method: "POST" })
       model: gateway(DEFAULT_MODEL),
       system: `Je bent een bestseller fantasy-romanschrijver. Schrijf in het Nederlands meeslepende hoofdstukken (vergelijkbaar met Sanderson, Rothfuss, Martin).
 BELANGRIJK: het hoofdstuk MOET minimaal ${data.minWords} woorden bevatten. Houd alle eerdere gebeurtenissen, personages en wereldinformatie consistent.
+Personages kunnen NIET teleporteren tussen locaties — ze moeten zijn waar ze het laatst waren of hun reis moet expliciet beschreven worden. Dode personages blijven dood.
 Geef ALLEEN geldige JSON terug, geen markdown fences of uitleg.`,
       prompt: `Schrijf hoofdstuk ${data.chapterNumber}.
 
@@ -95,8 +97,9 @@ ${data.storyContext}
 ==== SAMENVATTING VAN EERDERE HOOFDSTUKKEN ====
 ${data.previousSummary || "(nog geen eerdere hoofdstukken — dit is hoofdstuk 1)"}
 
+${data.continuity ? `==== ${data.continuity}\n` : ""}
 ${data.userChoice ? `==== KEUZE VAN DE LEZER ====\n${data.userChoice}\n` : ""}
-${data.directorInstructions ? `==== STORY DIRECTOR — STRIKTE REGIE-INSTRUCTIES (verplicht naleven) ====\n${data.directorInstructions}\n` : ""}
+${data.directorInstructions ? `==== HOOFDSTUK-PLANNING — STRIKTE REGIE-INSTRUCTIES (verplicht naleven) ====\n${data.directorInstructions}\n` : ""}
 
 Antwoord met EEN JSON-object met deze structuur:
 {
@@ -110,6 +113,7 @@ Antwoord met EEN JSON-object met deze structuur:
     const wordCount = object.content.trim().split(/\s+/).length;
     return { ...object, wordCount };
   });
+
 
 export const summarizeChapters = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -14,6 +14,9 @@ export interface Character {
   relationships?: string;
   status: CharacterStatus;
   portraitUrl?: string;
+  currentLocationId?: string;
+  injuries?: string[];
+
 }
 
 export interface Location {
@@ -54,7 +57,19 @@ export interface Chapter {
   choices?: { label: string; description?: string }[];
   chosenOption?: string;
   createdAt: number;
+  plan?: import("@/lib/chapter-plan").ChapterPlan;
 }
+
+export interface StoryRelationship {
+  id: string;
+  a: string;
+  b: string;
+  type: string;
+  note?: string;
+  chapterNumber?: number;
+  createdAt: number;
+}
+
 
 export interface TimelineEvent {
   id: string;
@@ -79,8 +94,11 @@ export interface Story {
   magic?: MagicSystem;
   chapters: Chapter[];
   timeline: TimelineEvent[];
+  relationships?: StoryRelationship[];
+  chapterPresets?: import("@/lib/chapter-plan").ChapterPreset[];
   favorite?: boolean;
   createdAt: number;
   updatedAt: number;
   lastReadChapter?: number;
 }
+
