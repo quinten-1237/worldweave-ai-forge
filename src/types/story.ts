@@ -94,8 +94,11 @@ export interface Story {
   magic?: MagicSystem;
   chapters: Chapter[];
   timeline: TimelineEvent[];
+  relationships?: StoryRelationship[];
+  chapterPresets?: import("@/lib/chapter-plan").ChapterPreset[];
   favorite?: boolean;
   createdAt: number;
   updatedAt: number;
   lastReadChapter?: number;
 }
+
