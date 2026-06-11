@@ -207,15 +207,32 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           {presets.length > 0 && (
             <select
               className="h-9 text-xs rounded-md border border-input bg-input px-2"
-              value=""
+              value={activePresetId ?? ""}
               onChange={(e) => {
                 const p = presets.find((x) => x.id === e.target.value);
                 if (p) loadPreset(p);
+                else setActivePresetId(null);
               }}
             >
               <option value="">Laad planning…</option>
               {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+          )}
+          {activePresetId && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleUpdateActivePreset} disabled={generating} title="Sla huidige planning op naar geselecteerd preset">
+                <Save className="h-3 w-3" /> Update
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleRenameActivePreset} disabled={generating}>
+                <Pencil className="h-3 w-3" /> Hernoem
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating}>
+                <Copy className="h-3 w-3" /> Dupliceer
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleDeleteActivePreset} disabled={generating}>
+                <Trash2 className="h-3 w-3" /> Wis
+              </Button>
+            </>
           )}
         </div>
       </div>
