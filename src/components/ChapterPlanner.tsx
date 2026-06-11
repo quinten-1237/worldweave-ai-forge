@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy } from "lucide-react";
+import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy, Eye, ScrollText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import {
   ROLE_LABEL, LENGTH_LABEL, LENGTH_WORDS,
   emptyPlan, defaultPlanFromContinuity,
 } from "@/lib/chapter-plan";
+import { deriveContinuity } from "@/lib/continuity";
 import { toast } from "sonner";
 
 interface Props {
@@ -29,11 +30,15 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
   const story = useStoryStore((s) => s.stories.find((st) => st.id === storyId)!);
   const savePreset = useStoryStore((s) => s.saveChapterPreset);
+  const updatePreset = useStoryStore((s) => s.updateChapterPreset);
+  const duplicatePreset = useStoryStore((s) => s.duplicateChapterPreset);
   const deletePreset = useStoryStore((s) => s.deleteChapterPreset);
 
   const [plan, setPlan] = useState<ChapterPlan>(() => defaultPlanFromContinuity(story));
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({
     chars: true, locs: true, assign: false, events: false, goals: false, rels: false, length: true, extra: false,
+    preview: true, continuity: true,
   });
 
   // Keep plan in sync if the story's character/location list grows
@@ -119,24 +124,64 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
   const handleSavePreset = () => {
     const name = prompt("Naam voor deze planning?");
     if (!name?.trim()) return;
-    savePreset(storyId, name.trim(), plan);
+    const p = savePreset(storyId, name.trim(), plan);
+    setActivePresetId(p.id);
     toast.success("Planning opgeslagen");
+  };
+
+  const handleUpdateActivePreset = () => {
+    if (!activePresetId) return;
+    updatePreset(storyId, activePresetId, { plan });
+    toast.success("Planning bijgewerkt");
+  };
+
+  const handleRenameActivePreset = () => {
+    if (!activePresetId) return;
+    const current = (story.chapterPresets ?? []).find((p) => p.id === activePresetId);
+    const name = prompt("Nieuwe naam?", current?.name ?? "");
+    if (!name?.trim()) return;
+    updatePreset(storyId, activePresetId, { name: name.trim() });
+    toast.success("Naam bijgewerkt");
+  };
+
+  const handleDuplicateActivePreset = () => {
+    if (!activePresetId) return;
+    const copy = duplicatePreset(storyId, activePresetId);
+    if (copy) {
+      setActivePresetId(copy.id);
+      setPlan(copy.plan);
+      toast.success("Planning gedupliceerd");
+    }
+  };
+
+  const handleDeleteActivePreset = () => {
+    if (!activePresetId) return;
+    if (!confirm("Verwijder deze opgeslagen planning?")) return;
+    deletePreset(storyId, activePresetId);
+    setActivePresetId(null);
+    toast.success("Verwijderd");
   };
 
   const loadPreset = (preset: ChapterPreset) => {
     setPlan(preset.plan);
+    setActivePresetId(preset.id);
     toast.success(`"${preset.name}" geladen`);
   };
 
   const duplicatePrevious = () => {
     if (!lastChapter?.plan) return toast.error("Vorig hoofdstuk heeft geen planning");
     setPlan(lastChapter.plan);
+    setActivePresetId(null);
     toast.success("Vorige planning gedupliceerd");
   };
 
-  const resetPlan = () => setPlan(defaultPlanFromContinuity(story));
+  const resetPlan = () => {
+    setPlan(defaultPlanFromContinuity(story));
+    setActivePresetId(null);
+  };
 
   const presets = story.chapterPresets ?? [];
+  const continuity = useMemo(() => deriveContinuity(story), [story]);
 
   return (
     <div className="bg-card border border-gold/30 rounded-xl p-6 shadow-card space-y-4">
