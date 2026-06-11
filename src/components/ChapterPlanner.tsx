@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy } from "lucide-react";
+import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy, Eye, ScrollText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import {
   ROLE_LABEL, LENGTH_LABEL, LENGTH_WORDS,
   emptyPlan, defaultPlanFromContinuity,
 } from "@/lib/chapter-plan";
+import { deriveContinuity } from "@/lib/continuity";
 import { toast } from "sonner";
 
 interface Props {
@@ -29,11 +30,15 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
   const story = useStoryStore((s) => s.stories.find((st) => st.id === storyId)!);
   const savePreset = useStoryStore((s) => s.saveChapterPreset);
+  const updatePreset = useStoryStore((s) => s.updateChapterPreset);
+  const duplicatePreset = useStoryStore((s) => s.duplicateChapterPreset);
   const deletePreset = useStoryStore((s) => s.deleteChapterPreset);
 
   const [plan, setPlan] = useState<ChapterPlan>(() => defaultPlanFromContinuity(story));
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({
     chars: true, locs: true, assign: false, events: false, goals: false, rels: false, length: true, extra: false,
+    preview: true, continuity: true,
   });
 
   // Keep plan in sync if the story's character/location list grows
@@ -119,24 +124,64 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
   const handleSavePreset = () => {
     const name = prompt("Naam voor deze planning?");
     if (!name?.trim()) return;
-    savePreset(storyId, name.trim(), plan);
+    const p = savePreset(storyId, name.trim(), plan);
+    setActivePresetId(p.id);
     toast.success("Planning opgeslagen");
+  };
+
+  const handleUpdateActivePreset = () => {
+    if (!activePresetId) return;
+    updatePreset(storyId, activePresetId, { plan });
+    toast.success("Planning bijgewerkt");
+  };
+
+  const handleRenameActivePreset = () => {
+    if (!activePresetId) return;
+    const current = (story.chapterPresets ?? []).find((p) => p.id === activePresetId);
+    const name = prompt("Nieuwe naam?", current?.name ?? "");
+    if (!name?.trim()) return;
+    updatePreset(storyId, activePresetId, { name: name.trim() });
+    toast.success("Naam bijgewerkt");
+  };
+
+  const handleDuplicateActivePreset = () => {
+    if (!activePresetId) return;
+    const copy = duplicatePreset(storyId, activePresetId);
+    if (copy) {
+      setActivePresetId(copy.id);
+      setPlan(copy.plan);
+      toast.success("Planning gedupliceerd");
+    }
+  };
+
+  const handleDeleteActivePreset = () => {
+    if (!activePresetId) return;
+    if (!confirm("Verwijder deze opgeslagen planning?")) return;
+    deletePreset(storyId, activePresetId);
+    setActivePresetId(null);
+    toast.success("Verwijderd");
   };
 
   const loadPreset = (preset: ChapterPreset) => {
     setPlan(preset.plan);
+    setActivePresetId(preset.id);
     toast.success(`"${preset.name}" geladen`);
   };
 
   const duplicatePrevious = () => {
     if (!lastChapter?.plan) return toast.error("Vorig hoofdstuk heeft geen planning");
     setPlan(lastChapter.plan);
+    setActivePresetId(null);
     toast.success("Vorige planning gedupliceerd");
   };
 
-  const resetPlan = () => setPlan(defaultPlanFromContinuity(story));
+  const resetPlan = () => {
+    setPlan(defaultPlanFromContinuity(story));
+    setActivePresetId(null);
+  };
 
   const presets = story.chapterPresets ?? [];
+  const continuity = useMemo(() => deriveContinuity(story), [story]);
 
   return (
     <div className="bg-card border border-gold/30 rounded-xl p-6 shadow-card space-y-4">
@@ -162,15 +207,32 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           {presets.length > 0 && (
             <select
               className="h-9 text-xs rounded-md border border-input bg-input px-2"
-              value=""
+              value={activePresetId ?? ""}
               onChange={(e) => {
                 const p = presets.find((x) => x.id === e.target.value);
                 if (p) loadPreset(p);
+                else setActivePresetId(null);
               }}
             >
               <option value="">Laad planning…</option>
               {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+          )}
+          {activePresetId && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleUpdateActivePreset} disabled={generating} title="Sla huidige planning op naar geselecteerd preset">
+                <Save className="h-3 w-3" /> Update
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleRenameActivePreset} disabled={generating}>
+                <Pencil className="h-3 w-3" /> Hernoem
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating}>
+                <Copy className="h-3 w-3" /> Dupliceer
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleDeleteActivePreset} disabled={generating}>
+                <Trash2 className="h-3 w-3" /> Wis
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -371,6 +433,103 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           )}
           <Input placeholder="Specifieke actie voor hoofdpersoon (optioneel)" value={plan.userChoice ?? ""} onChange={(e) => setPlan((p) => ({ ...p, userChoice: e.target.value }))} />
           <Textarea rows={3} placeholder="Vrije regie-aanwijzingen..." value={plan.extra ?? ""} onChange={(e) => setPlan((p) => ({ ...p, extra: e.target.value }))} />
+        </div>
+      </Section>
+
+      {/* Continuity summary — derived from prior chapters */}
+      <Section title="Continuïteit (vorige hoofdstukken)" icon={ScrollText} count={continuity.characterLocations.length + continuity.deadCharacters.length + continuity.relationships.length} open={open.continuity} onToggle={() => setOpen({ ...open, continuity: !open.continuity })}>
+        <div className="space-y-3 text-xs">
+          {continuity.characterLocations.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Laatste bekende locaties</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.characterLocations.map((cl) => (
+                  <li key={cl.name} className="flex items-center gap-2">
+                    <span className="font-medium">{cl.name}</span>
+                    <span className="text-muted-foreground">→ {cl.location ?? "onbekend"}</span>
+                    <span className="text-[10px] px-1.5 rounded-full bg-secondary text-muted-foreground">{cl.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.deadCharacters.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-destructive">Overleden (blijven dood)</Label>
+              <p className="mt-1 text-muted-foreground">{continuity.deadCharacters.join(", ")}</p>
+            </div>
+          )}
+          {continuity.injuries.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Verwondingen</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.injuries.map((i) => (
+                  <li key={i.name}><span className="font-medium">{i.name}:</span> <span className="text-muted-foreground">{i.injuries.join("; ")}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.relationships.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Actieve relaties</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.relationships.map((r, i) => (
+                  <li key={i}><span className="font-medium">{r.a} ↔ {r.b}</span> <span className="text-muted-foreground">— {r.type}{r.note ? ` (${r.note})` : ""}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.characterLocations.length === 0 && continuity.deadCharacters.length === 0 && continuity.relationships.length === 0 && (
+            <p className="text-muted-foreground">Nog geen continuïteitsgegevens — dit is je eerste hoofdstuk.</p>
+          )}
+        </div>
+      </Section>
+
+      {/* Read-only preview of what will be sent to the AI */}
+      <Section title="Voorvertoning hoofdstuk-opzet" icon={Eye} count={includedChars.length + plan.events.length + (plan.customEvent?.trim() ? 1 : 0)} open={open.preview} onToggle={() => setOpen({ ...open, preview: !open.preview })}>
+        <div className="space-y-3 text-xs">
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-gold/80">Opgenomen personages</Label>
+            {includedChars.length === 0 ? (
+              <p className="mt-1 text-muted-foreground">Geen personages geselecteerd.</p>
+            ) : (
+              <ul className="mt-1 space-y-0.5">
+                {includedChars.map((pc) => {
+                  const c = story.characters.find((x) => x.id === pc.characterId);
+                  if (!c) return null;
+                  const locName = pc.locationId
+                    ? (story.locations.find((l) => l.id === pc.locationId)?.name
+                        ?? plan.newLocations.find((n) => n.name === pc.locationId)?.name)
+                    : null;
+                  return (
+                    <li key={pc.characterId} className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-medium">{c.name}</span>
+                      <span className="px-1.5 rounded-full bg-gold/15 text-gold text-[10px]">{ROLE_LABEL[pc.role]}</span>
+                      {pc.viewpoint && <span className="px-1.5 rounded-full bg-primary/15 text-primary text-[10px]">POV</span>}
+                      {pc.hasDialogue && <span className="px-1.5 rounded-full bg-secondary text-muted-foreground text-[10px]">dialoog</span>}
+                      {pc.keyScene && <span className="px-1.5 rounded-full bg-secondary text-muted-foreground text-[10px]">sleutel-scene</span>}
+                      {locName && <span className="text-muted-foreground">@ {locName}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-gold/80">Gebeurtenissen</Label>
+            {plan.events.length === 0 && !plan.customEvent?.trim() ? (
+              <p className="mt-1 text-muted-foreground">Geen gebeurtenissen geselecteerd.</p>
+            ) : (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {plan.events.map((e) => <span key={e} className="px-1.5 py-0.5 rounded-full bg-gold/15 text-gold">{e}</span>)}
+                {plan.customEvent?.trim() && <span className="px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">{plan.customEvent.trim()}</span>}
+              </div>
+            )}
+          </div>
+          <div className="text-muted-foreground">
+            Lengte: <span className="text-foreground">{LENGTH_LABEL[plan.length]}</span>
+            {plan.goals.length > 0 && <> • Doelen: <span className="text-foreground">{plan.goals.join(", ")}</span></>}
+          </div>
         </div>
       </Section>
 

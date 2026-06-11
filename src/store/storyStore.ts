@@ -32,7 +32,9 @@ interface State {
 
   addTimelineEvent: (storyId: string, e: Omit<TimelineEvent, "id" | "createdAt">) => void;
 
-  saveChapterPreset: (storyId: string, name: string, plan: ChapterPlan) => void;
+  saveChapterPreset: (storyId: string, name: string, plan: ChapterPlan) => ChapterPreset;
+  updateChapterPreset: (storyId: string, presetId: string, patch: Partial<Omit<ChapterPreset, "id" | "createdAt">>) => void;
+  duplicateChapterPreset: (storyId: string, presetId: string) => ChapterPreset | undefined;
   deleteChapterPreset: (storyId: string, presetId: string) => void;
   applyChapterOutcome: (
     storyId: string,
@@ -236,20 +238,51 @@ export const useStoryStore = create<State>()(
           ),
         })),
 
-      saveChapterPreset: (storyId, name, plan) =>
+      saveChapterPreset: (storyId, name, plan) => {
+        const preset: ChapterPreset = { id: uid(), name, createdAt: Date.now(), plan };
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, chapterPresets: [...(st.chapterPresets ?? []), preset] }
+              : st,
+          ),
+        }));
+        return preset;
+      },
+
+      updateChapterPreset: (storyId, presetId, patch) =>
         set((s) => ({
           stories: s.stories.map((st) =>
             st.id === storyId
               ? {
                   ...st,
-                  chapterPresets: [
-                    ...(st.chapterPresets ?? []),
-                    { id: uid(), name, createdAt: Date.now(), plan },
-                  ],
+                  chapterPresets: (st.chapterPresets ?? []).map((p) =>
+                    p.id === presetId ? { ...p, ...patch } : p,
+                  ),
                 }
               : st,
           ),
         })),
+
+      duplicateChapterPreset: (storyId, presetId) => {
+        const st = get().stories.find((x) => x.id === storyId);
+        const src = st?.chapterPresets?.find((p) => p.id === presetId);
+        if (!src) return undefined;
+        const copy: ChapterPreset = {
+          id: uid(),
+          name: `${src.name} (kopie)`,
+          createdAt: Date.now(),
+          plan: JSON.parse(JSON.stringify(src.plan)),
+        };
+        set((s) => ({
+          stories: s.stories.map((stt) =>
+            stt.id === storyId
+              ? { ...stt, chapterPresets: [...(stt.chapterPresets ?? []), copy] }
+              : stt,
+          ),
+        }));
+        return copy;
+      },
 
       deleteChapterPreset: (storyId, presetId) =>
         set((s) => ({

@@ -4,17 +4,17 @@ export type CharacterRole = "main" | "supporting" | "background" | "absent";
 export type ChapterLength = "short" | "medium" | "long" | "epic";
 
 export const LENGTH_WORDS: Record<ChapterLength, number> = {
-  short: 1000,
-  medium: 2000,
-  long: 3000,
-  epic: 5000,
+  short: 250,
+  medium: 500,
+  long: 1000,
+  epic: 2000,
 };
 
 export const LENGTH_LABEL: Record<ChapterLength, string> = {
-  short: "Kort (1000 woorden)",
-  medium: "Middel (2000 woorden)",
-  long: "Lang (3000 woorden)",
-  epic: "Episch (5000+ woorden)",
+  short: "Klein (250 woorden)",
+  medium: "Middel (500 woorden)",
+  long: "Lang (1000 woorden)",
+  epic: "Episch (2000 woorden)",
 };
 
 export const ROLE_LABEL: Record<CharacterRole, string> = {
