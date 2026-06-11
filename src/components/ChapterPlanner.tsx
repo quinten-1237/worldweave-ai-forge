@@ -436,6 +436,103 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
         </div>
       </Section>
 
+      {/* Continuity summary — derived from prior chapters */}
+      <Section title="Continuïteit (vorige hoofdstukken)" icon={ScrollText} count={continuity.characterLocations.length + continuity.deadCharacters.length + continuity.relationships.length} open={open.continuity} onToggle={() => setOpen({ ...open, continuity: !open.continuity })}>
+        <div className="space-y-3 text-xs">
+          {continuity.characterLocations.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Laatste bekende locaties</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.characterLocations.map((cl) => (
+                  <li key={cl.name} className="flex items-center gap-2">
+                    <span className="font-medium">{cl.name}</span>
+                    <span className="text-muted-foreground">→ {cl.location ?? "onbekend"}</span>
+                    <span className="text-[10px] px-1.5 rounded-full bg-secondary text-muted-foreground">{cl.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.deadCharacters.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-destructive">Overleden (blijven dood)</Label>
+              <p className="mt-1 text-muted-foreground">{continuity.deadCharacters.join(", ")}</p>
+            </div>
+          )}
+          {continuity.injuries.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Verwondingen</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.injuries.map((i) => (
+                  <li key={i.name}><span className="font-medium">{i.name}:</span> <span className="text-muted-foreground">{i.injuries.join("; ")}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.relationships.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Actieve relaties</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.relationships.map((r, i) => (
+                  <li key={i}><span className="font-medium">{r.a} ↔ {r.b}</span> <span className="text-muted-foreground">— {r.type}{r.note ? ` (${r.note})` : ""}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.characterLocations.length === 0 && continuity.deadCharacters.length === 0 && continuity.relationships.length === 0 && (
+            <p className="text-muted-foreground">Nog geen continuïteitsgegevens — dit is je eerste hoofdstuk.</p>
+          )}
+        </div>
+      </Section>
+
+      {/* Read-only preview of what will be sent to the AI */}
+      <Section title="Voorvertoning hoofdstuk-opzet" icon={Eye} count={includedChars.length + plan.events.length + (plan.customEvent?.trim() ? 1 : 0)} open={open.preview} onToggle={() => setOpen({ ...open, preview: !open.preview })}>
+        <div className="space-y-3 text-xs">
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-gold/80">Opgenomen personages</Label>
+            {includedChars.length === 0 ? (
+              <p className="mt-1 text-muted-foreground">Geen personages geselecteerd.</p>
+            ) : (
+              <ul className="mt-1 space-y-0.5">
+                {includedChars.map((pc) => {
+                  const c = story.characters.find((x) => x.id === pc.characterId);
+                  if (!c) return null;
+                  const locName = pc.locationId
+                    ? (story.locations.find((l) => l.id === pc.locationId)?.name
+                        ?? plan.newLocations.find((n) => n.name === pc.locationId)?.name)
+                    : null;
+                  return (
+                    <li key={pc.characterId} className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-medium">{c.name}</span>
+                      <span className="px-1.5 rounded-full bg-gold/15 text-gold text-[10px]">{ROLE_LABEL[pc.role]}</span>
+                      {pc.viewpoint && <span className="px-1.5 rounded-full bg-primary/15 text-primary text-[10px]">POV</span>}
+                      {pc.hasDialogue && <span className="px-1.5 rounded-full bg-secondary text-muted-foreground text-[10px]">dialoog</span>}
+                      {pc.keyScene && <span className="px-1.5 rounded-full bg-secondary text-muted-foreground text-[10px]">sleutel-scene</span>}
+                      {locName && <span className="text-muted-foreground">@ {locName}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-gold/80">Gebeurtenissen</Label>
+            {plan.events.length === 0 && !plan.customEvent?.trim() ? (
+              <p className="mt-1 text-muted-foreground">Geen gebeurtenissen geselecteerd.</p>
+            ) : (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {plan.events.map((e) => <span key={e} className="px-1.5 py-0.5 rounded-full bg-gold/15 text-gold">{e}</span>)}
+                {plan.customEvent?.trim() && <span className="px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">{plan.customEvent.trim()}</span>}
+              </div>
+            )}
+          </div>
+          <div className="text-muted-foreground">
+            Lengte: <span className="text-foreground">{LENGTH_LABEL[plan.length]}</span>
+            {plan.goals.length > 0 && <> • Doelen: <span className="text-foreground">{plan.goals.join(", ")}</span></>}
+          </div>
+        </div>
+      </Section>
+
       <div className="pt-2 border-t border-border flex justify-end">
         <Button variant="hero" size="lg" onClick={handleGenerate} disabled={generating}>
           {generating ? <><Loader2 className="animate-spin" /> Schrijven...</> : <><Wand2 /> Genereer hoofdstuk {chapterNumber}</>}
