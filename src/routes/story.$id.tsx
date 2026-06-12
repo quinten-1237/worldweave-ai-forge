@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ChapterPlanner } from "@/components/ChapterPlanner";
+import { StorySetupWizard } from "@/components/StorySetupWizard";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
 import { ImageUploader } from "@/components/ImageUploader";
@@ -264,8 +265,15 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         </div>
 
         {!search && (
-          <div className="mt-8">
-            <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+          <div className="mt-8 space-y-6">
+            {story.chapters.length === 0 &&
+              (!story.beginningState?.trim() || !story.endGoal?.trim()) && (
+                <StorySetupWizard storyId={storyId} />
+              )}
+            {(story.chapters.length > 0 ||
+              (story.beginningState?.trim() && story.endGoal?.trim())) && (
+              <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+            )}
           </div>
         )}
       </div>

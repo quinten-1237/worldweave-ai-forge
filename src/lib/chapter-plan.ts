@@ -169,6 +169,15 @@ export function planToInstructions(
   const locById = new Map(story.locations.map((l) => [l.id, l]));
   const lines: string[] = [];
 
+  // Story setup (especially crucial for chapter 1)
+  if (story.beginningState?.trim()) {
+    lines.push(`- VERHAAL-OPZET — BEGINSITUATIE: ${story.beginningState.trim()}`);
+  }
+  if (story.endGoal?.trim()) {
+    lines.push(`- VERHAAL-OPZET — EINDDOEL (bouw hier naartoe): ${story.endGoal.trim()}`);
+  }
+
+
   // Characters per role
   const roleGroups: Record<CharacterRole, string[]> = {
     main: [], supporting: [], background: [], absent: [],

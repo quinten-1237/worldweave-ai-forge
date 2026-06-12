@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy, Eye, ScrollText, Pencil } from "lucide-react";
+import { Loader2, Wand2, Plus, Trash2, ChevronDown, Sparkles, Users, MapPin, Calendar, Target, Heart, Save, Copy, Eye, ScrollText, Pencil, Download, Upload, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,6 +162,56 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
     toast.success("Verwijderd");
   };
 
+  const exportPresets = () => {
+    const presets = story.chapterPresets ?? [];
+    if (presets.length === 0) return toast.error("Geen presets om te exporteren");
+    const payload = {
+      kind: "storyforge-chapter-presets",
+      version: 1,
+      exportedAt: Date.now(),
+      presets: activePresetId
+        ? presets.filter((p) => p.id === activePresetId)
+        : presets,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chapter-presets-${story.title.replace(/\s+/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${payload.presets.length} preset(s) geëxporteerd`);
+  };
+
+  const importPresets = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const list: ChapterPreset[] = Array.isArray(data)
+          ? data
+          : data?.presets ?? [];
+        if (!Array.isArray(list) || list.length === 0) throw new Error("Geen presets gevonden in bestand");
+        let count = 0;
+        for (const p of list) {
+          if (!p?.plan) continue;
+          savePreset(storyId, p.name ?? "Geïmporteerde planning", p.plan);
+          count++;
+        }
+        toast.success(`${count} preset(s) geïmporteerd`);
+      } catch (e) {
+        toast.error("Kon bestand niet importeren: " + (e as Error).message);
+      }
+    };
+    input.click();
+  };
+
+
   const loadPreset = (preset: ChapterPreset) => {
     setPlan(preset.plan);
     setActivePresetId(preset.id);
@@ -194,20 +244,29 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
             Plan elk hoofdstuk als een serieaflevering: personages, locaties, gebeurtenissen, doelen, lengte.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap" data-testid="planner-toolbar">
           <Button size="sm" variant="ghost" onClick={resetPlan} disabled={generating}>Reset</Button>
           {lastChapter?.plan && (
             <Button size="sm" variant="outline" onClick={duplicatePrevious} disabled={generating}>
               <Copy className="h-3 w-3" /> Dupliceer vorige
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={handleSavePreset} disabled={generating}>
+          <Button size="sm" variant="outline" onClick={handleSavePreset} disabled={generating} data-testid="preset-save">
             <Save className="h-3 w-3" /> Bewaar
           </Button>
+          <Button size="sm" variant="outline" onClick={importPresets} disabled={generating} data-testid="preset-import" title="Importeer presets uit JSON">
+            <Upload className="h-3 w-3" /> Import
+          </Button>
+          {presets.length > 0 && (
+            <Button size="sm" variant="outline" onClick={exportPresets} disabled={generating} data-testid="preset-export" title="Exporteer presets als JSON">
+              <Download className="h-3 w-3" /> Export
+            </Button>
+          )}
           {presets.length > 0 && (
             <select
               className="h-9 text-xs rounded-md border border-input bg-input px-2"
               value={activePresetId ?? ""}
+              data-testid="preset-select"
               onChange={(e) => {
                 const p = presets.find((x) => x.id === e.target.value);
                 if (p) loadPreset(p);
@@ -226,7 +285,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
               <Button size="sm" variant="outline" onClick={handleRenameActivePreset} disabled={generating}>
                 <Pencil className="h-3 w-3" /> Hernoem
               </Button>
-              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating}>
+              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating} data-testid="preset-duplicate">
                 <Copy className="h-3 w-3" /> Dupliceer
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDeleteActivePreset} disabled={generating}>
@@ -236,6 +295,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           )}
         </div>
       </div>
+
 
       {/* Characters */}
       <Section title="Personages" icon={Users} count={includedChars.length} open={open.chars} onToggle={() => setOpen({ ...open, chars: !open.chars })}>
@@ -436,18 +496,42 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
         </div>
       </Section>
 
-      {/* Continuity summary — derived from prior chapters */}
+      {/* Continuity summary — derived from prior chapters, each item shows its source */}
       <Section title="Continuïteit (vorige hoofdstukken)" icon={ScrollText} count={continuity.characterLocations.length + continuity.deadCharacters.length + continuity.relationships.length} open={open.continuity} onToggle={() => setOpen({ ...open, continuity: !open.continuity })}>
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3 text-xs" data-testid="continuity-panel">
+          <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+            <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-gold/70" />
+            Elke waarde toont waar hij vandaan komt, zodat je kunt verifiëren waarom de planner die gebruikt.
+          </p>
+          {continuity.storySetup && (continuity.storySetup.beginningState || continuity.storySetup.endGoal) && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Verhaal-opzet (vast voor elk hoofdstuk)</Label>
+              <ul className="mt-1 space-y-1">
+                {continuity.storySetup.beginningState && (
+                  <li>
+                    <span className="font-medium">Begin:</span> <span className="text-muted-foreground">{continuity.storySetup.beginningState}</span>
+                    <span className="ml-2 text-[10px] text-muted-foreground/70">bron: Verhaal-opzet wizard</span>
+                  </li>
+                )}
+                {continuity.storySetup.endGoal && (
+                  <li>
+                    <span className="font-medium">Einddoel:</span> <span className="text-muted-foreground">{continuity.storySetup.endGoal}</span>
+                    <span className="ml-2 text-[10px] text-muted-foreground/70">bron: Verhaal-opzet wizard</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
           {continuity.characterLocations.length > 0 && (
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-gold/80">Laatste bekende locaties</Label>
               <ul className="mt-1 space-y-0.5">
                 {continuity.characterLocations.map((cl) => (
-                  <li key={cl.name} className="flex items-center gap-2">
+                  <li key={cl.name} className="flex items-center gap-2 flex-wrap" data-testid="continuity-location">
                     <span className="font-medium">{cl.name}</span>
                     <span className="text-muted-foreground">→ {cl.location ?? "onbekend"}</span>
                     <span className="text-[10px] px-1.5 rounded-full bg-secondary text-muted-foreground">{cl.status}</span>
+                    <span className="text-[10px] text-muted-foreground/70 italic">bron: {cl.source}</span>
                   </li>
                 ))}
               </ul>
@@ -456,7 +540,27 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           {continuity.deadCharacters.length > 0 && (
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-destructive">Overleden (blijven dood)</Label>
-              <p className="mt-1 text-muted-foreground">{continuity.deadCharacters.join(", ")}</p>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.deadCharacters.map((d) => (
+                  <li key={d.name} className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="text-[10px] text-muted-foreground/70 italic">bron: {d.source}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {continuity.missingCharacters.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-gold/80">Vermist</Label>
+              <ul className="mt-1 space-y-0.5">
+                {continuity.missingCharacters.map((d) => (
+                  <li key={d.name} className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="text-[10px] text-muted-foreground/70 italic">bron: {d.source}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {continuity.injuries.length > 0 && (
@@ -464,7 +568,11 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
               <Label className="text-[10px] uppercase tracking-wider text-gold/80">Verwondingen</Label>
               <ul className="mt-1 space-y-0.5">
                 {continuity.injuries.map((i) => (
-                  <li key={i.name}><span className="font-medium">{i.name}:</span> <span className="text-muted-foreground">{i.injuries.join("; ")}</span></li>
+                  <li key={i.name} className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{i.name}:</span>
+                    <span className="text-muted-foreground">{i.injuries.join("; ")}</span>
+                    <span className="text-[10px] text-muted-foreground/70 italic">bron: {i.source}</span>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -474,12 +582,16 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
               <Label className="text-[10px] uppercase tracking-wider text-gold/80">Actieve relaties</Label>
               <ul className="mt-1 space-y-0.5">
                 {continuity.relationships.map((r, i) => (
-                  <li key={i}><span className="font-medium">{r.a} ↔ {r.b}</span> <span className="text-muted-foreground">— {r.type}{r.note ? ` (${r.note})` : ""}</span></li>
+                  <li key={i} className="flex items-center gap-2 flex-wrap" data-testid="continuity-relationship">
+                    <span className="font-medium">{r.a} ↔ {r.b}</span>
+                    <span className="text-muted-foreground">— {r.type}{r.note ? ` (${r.note})` : ""}</span>
+                    <span className="text-[10px] text-muted-foreground/70 italic">bron: {r.source}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
-          {continuity.characterLocations.length === 0 && continuity.deadCharacters.length === 0 && continuity.relationships.length === 0 && (
+          {continuity.characterLocations.length === 0 && continuity.deadCharacters.length === 0 && continuity.relationships.length === 0 && !continuity.storySetup && (
             <p className="text-muted-foreground">Nog geen continuïteitsgegevens — dit is je eerste hoofdstuk.</p>
           )}
         </div>
@@ -487,7 +599,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
 
       {/* Read-only preview of what will be sent to the AI */}
       <Section title="Voorvertoning hoofdstuk-opzet" icon={Eye} count={includedChars.length + plan.events.length + (plan.customEvent?.trim() ? 1 : 0)} open={open.preview} onToggle={() => setOpen({ ...open, preview: !open.preview })}>
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3 text-xs" data-testid="preview-panel">
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-gold/80">Opgenomen personages</Label>
             {includedChars.length === 0 ? (
