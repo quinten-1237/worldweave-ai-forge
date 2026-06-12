@@ -264,8 +264,15 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         </div>
 
         {!search && (
-          <div className="mt-8">
-            <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+          <div className="mt-8 space-y-6">
+            {story.chapters.length === 0 &&
+              (!story.beginningState?.trim() || !story.endGoal?.trim()) && (
+                <StorySetupWizard storyId={storyId} />
+              )}
+            {(story.chapters.length > 0 ||
+              (story.beginningState?.trim() && story.endGoal?.trim())) && (
+              <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+            )}
           </div>
         )}
       </div>
