@@ -162,6 +162,56 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
     toast.success("Verwijderd");
   };
 
+  const exportPresets = () => {
+    const presets = story.chapterPresets ?? [];
+    if (presets.length === 0) return toast.error("Geen presets om te exporteren");
+    const payload = {
+      kind: "storyforge-chapter-presets",
+      version: 1,
+      exportedAt: Date.now(),
+      presets: activePresetId
+        ? presets.filter((p) => p.id === activePresetId)
+        : presets,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chapter-presets-${story.title.replace(/\s+/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${payload.presets.length} preset(s) geëxporteerd`);
+  };
+
+  const importPresets = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const list: ChapterPreset[] = Array.isArray(data)
+          ? data
+          : data?.presets ?? [];
+        if (!Array.isArray(list) || list.length === 0) throw new Error("Geen presets gevonden in bestand");
+        let count = 0;
+        for (const p of list) {
+          if (!p?.plan) continue;
+          savePreset(storyId, p.name ?? "Geïmporteerde planning", p.plan);
+          count++;
+        }
+        toast.success(`${count} preset(s) geïmporteerd`);
+      } catch (e) {
+        toast.error("Kon bestand niet importeren: " + (e as Error).message);
+      }
+    };
+    input.click();
+  };
+
+
   const loadPreset = (preset: ChapterPreset) => {
     setPlan(preset.plan);
     setActivePresetId(preset.id);
