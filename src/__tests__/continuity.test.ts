@@ -89,7 +89,7 @@ describe("continuity — characters never teleport", () => {
     useStoryStore.getState().updateCharacter(id, ned.id, { status: "dood" });
     const story = useStoryStore.getState().stories.find((s) => s.id === id)!;
     const cont = deriveContinuity(story);
-    expect(cont.deadCharacters).toContain("Ned");
+    expect(cont.deadCharacters.map((d) => d.name)).toContain("Ned");
     // dead chars are excluded from active location list
     expect(cont.characterLocations.find((c) => c.name === "Ned")).toBeUndefined();
   });
