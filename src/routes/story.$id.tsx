@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ChapterPlanner } from "@/components/ChapterPlanner";
+import { StorySetupWizard } from "@/components/StorySetupWizard";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
 import { ImageUploader } from "@/components/ImageUploader";
