@@ -244,20 +244,29 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
             Plan elk hoofdstuk als een serieaflevering: personages, locaties, gebeurtenissen, doelen, lengte.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap" data-testid="planner-toolbar">
           <Button size="sm" variant="ghost" onClick={resetPlan} disabled={generating}>Reset</Button>
           {lastChapter?.plan && (
             <Button size="sm" variant="outline" onClick={duplicatePrevious} disabled={generating}>
               <Copy className="h-3 w-3" /> Dupliceer vorige
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={handleSavePreset} disabled={generating}>
+          <Button size="sm" variant="outline" onClick={handleSavePreset} disabled={generating} data-testid="preset-save">
             <Save className="h-3 w-3" /> Bewaar
           </Button>
+          <Button size="sm" variant="outline" onClick={importPresets} disabled={generating} data-testid="preset-import" title="Importeer presets uit JSON">
+            <Upload className="h-3 w-3" /> Import
+          </Button>
+          {presets.length > 0 && (
+            <Button size="sm" variant="outline" onClick={exportPresets} disabled={generating} data-testid="preset-export" title="Exporteer presets als JSON">
+              <Download className="h-3 w-3" /> Export
+            </Button>
+          )}
           {presets.length > 0 && (
             <select
               className="h-9 text-xs rounded-md border border-input bg-input px-2"
               value={activePresetId ?? ""}
+              data-testid="preset-select"
               onChange={(e) => {
                 const p = presets.find((x) => x.id === e.target.value);
                 if (p) loadPreset(p);
@@ -276,7 +285,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
               <Button size="sm" variant="outline" onClick={handleRenameActivePreset} disabled={generating}>
                 <Pencil className="h-3 w-3" /> Hernoem
               </Button>
-              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating}>
+              <Button size="sm" variant="outline" onClick={handleDuplicateActivePreset} disabled={generating} data-testid="preset-duplicate">
                 <Copy className="h-3 w-3" /> Dupliceer
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDeleteActivePreset} disabled={generating}>
@@ -286,6 +295,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
           )}
         </div>
       </div>
+
 
       {/* Characters */}
       <Section title="Personages" icon={Users} count={includedChars.length} open={open.chars} onToggle={() => setOpen({ ...open, chars: !open.chars })}>
