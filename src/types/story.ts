@@ -88,6 +88,10 @@ export interface Story {
   language: string;
   genres: string[];
   tones: string[];
+  /** Verplicht voor hoofdstuk 1 — startsituatie van het verhaal. */
+  beginningState?: string;
+  /** Verplicht voor hoofdstuk 1 — het einddoel van het verhaal. */
+  endGoal?: string;
   characters: Character[];
   locations: Location[];
   factions: Faction[];
