@@ -599,7 +599,7 @@ export function ChapterPlanner({ storyId, generating, onGenerate }: Props) {
 
       {/* Read-only preview of what will be sent to the AI */}
       <Section title="Voorvertoning hoofdstuk-opzet" icon={Eye} count={includedChars.length + plan.events.length + (plan.customEvent?.trim() ? 1 : 0)} open={open.preview} onToggle={() => setOpen({ ...open, preview: !open.preview })}>
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3 text-xs" data-testid="preview-panel">
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-gold/80">Opgenomen personages</Label>
             {includedChars.length === 0 ? (
