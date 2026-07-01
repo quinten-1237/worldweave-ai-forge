@@ -213,7 +213,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
       const continuity = continuityToText(deriveContinuity(fresh));
       const directorInstructions = planToInstructions(plan, fresh);
 
-      const result = await genChapter({
+      const result = await withTimeout(genChapter({
         data: {
           storyContext: ctx,
           previousSummary: prev,
@@ -223,7 +223,8 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
           continuity,
           minWords: LENGTH_WORDS[plan.length],
         },
-      });
+      }), 15_000, "hoofdstuk-generatie");
+
 
       const newChap = addChapter(storyId, {
         title: result.title,
@@ -275,7 +276,10 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
               )}
             {(story.chapters.length > 0 ||
               (story.beginningState?.trim() && story.endGoal?.trim())) && (
-              <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+              <Suspense fallback={<div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Planner laden…</div>}>
+                <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+              </Suspense>
+
             )}
           </div>
         )}
@@ -375,7 +379,7 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
     setGenerating(true);
     try {
       const ctx = buildStoryContext(story);
-      const c = await genChar({ data: { storyContext: ctx } });
+      const c = await withTimeout(genChar({ data: { storyContext: ctx } }), 15_000, "personage-generatie");
       addCharacter(storyId, { ...c, status: "levend" });
       toast.success(`${c.name} toegevoegd`);
     } catch (e) {
