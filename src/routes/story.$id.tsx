@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -12,10 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ChapterPlanner } from "@/components/ChapterPlanner";
+const ChapterPlanner = lazy(() => import("@/components/ChapterPlanner").then((m) => ({ default: m.ChapterPlanner })));
 import { StorySetupWizard } from "@/components/StorySetupWizard";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
+import { withTimeout } from "@/lib/with-timeout";
+
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
