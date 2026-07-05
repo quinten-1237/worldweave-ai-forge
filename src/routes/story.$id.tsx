@@ -87,6 +87,10 @@ function StoryView() {
             <Button variant="ghost" size="icon" onClick={() => toggleFav(story.id)} title="Favoriet">
               <Heart className={story.favorite ? "fill-gold text-gold" : ""} />
             </Button>
+            <SaveIndicator />
+            <Button asChild variant="ghost" size="sm" title="Recovery Center">
+              <Link to="/story/$id/history" params={{ id: story.id }}><HistoryIcon /> Geschiedenis</Link>
+            </Button>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek..." className="pl-8 h-9 w-40" />
@@ -94,9 +98,9 @@ function StoryView() {
             <ExportMenu story={story} />
             <Button
               variant="ghost" size="icon"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("Verhaal verwijderen?")) {
-                  deleteStory(story.id);
+                  await deleteStoryEverywhere(story.id);
                   navigate({ to: "/" });
                 }
               }}
