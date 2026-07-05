@@ -49,8 +49,7 @@ interface State {
 
 
 export const useStoryStore = create<State>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       stories: [],
 
       createStory: (data) => {
