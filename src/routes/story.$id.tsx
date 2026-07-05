@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft, BookOpen, Users, MapPin, Shield, Sparkles, Clock,
   Library as LibraryIcon, Search, Download, Trash2, Plus, Wand2, Loader2,
-  Heart, Image as ImageIcon, Star,
+  Heart, Image as ImageIcon, Star, History as HistoryIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 const ChapterPlanner = lazy(() => import("@/components/ChapterPlanner").then((m) => ({ default: m.ChapterPlanner })));
 import { StorySetupWizard } from "@/components/StorySetupWizard";
+import { SaveIndicator } from "@/components/SaveIndicator";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
 import { withTimeout } from "@/lib/with-timeout";
+import { backupBeforeGeneration, deleteStoryEverywhere } from "@/lib/story-sync";
+import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType } from "@/lib/character-types";
 
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
