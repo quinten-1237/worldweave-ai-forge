@@ -43,6 +43,7 @@ function StoryView() {
   const navigate = useNavigate();
   const story = useStoryStore((s) => s.stories.find((st) => st.id === id));
   const deleteStory = useStoryStore((s) => s.deleteStory);
+  void deleteStory;
   const toggleFav = useStoryStore((s) => s.toggleFavorite);
   const [tab, setTab] = useState<Tab>("chapters");
   const [search, setSearch] = useState("");
