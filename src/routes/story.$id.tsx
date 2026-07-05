@@ -202,6 +202,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
 
   const generate = async (plan: ChapterPlan) => {
     setGenerating(true);
+    backupBeforeGeneration(storyId, `Voor hoofdstuk ${story.chapters.length + 1}`);
     try {
       // 1. Persist any brand-new locations before generation so they exist in context
       const createdLocs = [];
