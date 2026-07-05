@@ -63,7 +63,7 @@ async function hydrateFromCloud() {
   try {
     const rows = await listStoriesFromCloud();
     const stories: Story[] = rows.map((r) => {
-      const d = (r.data ?? {}) as Story;
+      const d = (r.data ?? {}) as unknown as Story;
       return {
         ...d,
         id: r.id,
