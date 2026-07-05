@@ -155,7 +155,7 @@ export const restoreStoryVersion = createServerFn({ method: "POST" })
     const restored = v.data as Record<string, unknown>;
     const { error } = await supabase
       .from("stories")
-      .update({ data: restored, title: (restored.title as string) ?? "Zonder titel" })
+      .update({ data: restored as never, title: (restored.title as string) ?? "Zonder titel" })
       .eq("id", v.story_id);
     if (error) throw new Error(error.message);
     return { ok: true, storyId: v.story_id, data: restored as unknown as Story };
@@ -191,7 +191,7 @@ export const restoreStoryBackup = createServerFn({ method: "POST" })
     const restored = b.data as Record<string, unknown>;
     const { error } = await supabase
       .from("stories")
-      .update({ data: restored, title: (restored.title as string) ?? "Zonder titel" })
+      .update({ data: restored as never, title: (restored.title as string) ?? "Zonder titel" })
       .eq("id", b.story_id);
     if (error) throw new Error(error.message);
     return { ok: true, storyId: b.story_id, data: restored as unknown as Story };
