@@ -325,12 +325,5 @@ export const useStoryStore = create<State>()(
       importStory: (story) =>
         set((s) => ({ stories: [{ ...story, id: uid() }, ...s.stories] })),
     }),
-    {
-      name: "storyforge-store-v1",
-      storage: createJSONStorage(() =>
-        typeof window !== "undefined" ? localStorage : (undefined as never),
-      ),
-    },
-  ),
 );
 
