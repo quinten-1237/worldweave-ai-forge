@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship } from "@/types/story";
 import type { ChapterPlan, ChapterPreset, RelationshipChange } from "@/lib/chapter-plan";
 
 
 function uid() {
+  // UUID for cloud compatibility; falls back to random string in ancient runtimes.
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
@@ -48,8 +49,7 @@ interface State {
 
 
 export const useStoryStore = create<State>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       stories: [],
 
       createStory: (data) => {
@@ -325,12 +325,5 @@ export const useStoryStore = create<State>()(
       importStory: (story) =>
         set((s) => ({ stories: [{ ...story, id: uid() }, ...s.stories] })),
     }),
-    {
-      name: "storyforge-store-v1",
-      storage: createJSONStorage(() =>
-        typeof window !== "undefined" ? localStorage : (undefined as never),
-      ),
-    },
-  ),
 );
 

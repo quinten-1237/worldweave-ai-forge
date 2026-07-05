@@ -16,6 +16,7 @@ import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryIdRouteImport } from './routes/story.$id'
+import { Route as StoryIdHistoryRouteImport } from './routes/story.$id.history'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -52,6 +53,11 @@ const StoryIdRoute = StoryIdRouteImport.update({
   path: '/story/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryIdHistoryRoute = StoryIdHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => StoryIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,7 +66,8 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
-  '/story/$id': typeof StoryIdRoute
+  '/story/$id': typeof StoryIdRouteWithChildren
+  '/story/$id/history': typeof StoryIdHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,7 +76,8 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
-  '/story/$id': typeof StoryIdRoute
+  '/story/$id': typeof StoryIdRouteWithChildren
+  '/story/$id/history': typeof StoryIdHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,7 +87,8 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
-  '/story/$id': typeof StoryIdRoute
+  '/story/$id': typeof StoryIdRouteWithChildren
+  '/story/$id/history': typeof StoryIdHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/settings'
     | '/story/$id'
+    | '/story/$id/history'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/settings'
     | '/story/$id'
+    | '/story/$id/history'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/settings'
     | '/story/$id'
+    | '/story/$id/history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,7 +130,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   NewRoute: typeof NewRoute
   SettingsRoute: typeof SettingsRoute
-  StoryIdRoute: typeof StoryIdRoute
+  StoryIdRoute: typeof StoryIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -172,8 +184,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/story/$id/history': {
+      id: '/story/$id/history'
+      path: '/history'
+      fullPath: '/story/$id/history'
+      preLoaderRoute: typeof StoryIdHistoryRouteImport
+      parentRoute: typeof StoryIdRoute
+    }
   }
 }
+
+interface StoryIdRouteChildren {
+  StoryIdHistoryRoute: typeof StoryIdHistoryRoute
+}
+
+const StoryIdRouteChildren: StoryIdRouteChildren = {
+  StoryIdHistoryRoute: StoryIdHistoryRoute,
+}
+
+const StoryIdRouteWithChildren =
+  StoryIdRoute._addFileChildren(StoryIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -182,18 +212,8 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   NewRoute: NewRoute,
   SettingsRoute: SettingsRoute,
-  StoryIdRoute: StoryIdRoute,
+  StoryIdRoute: StoryIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

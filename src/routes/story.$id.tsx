@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft, BookOpen, Users, MapPin, Shield, Sparkles, Clock,
   Library as LibraryIcon, Search, Download, Trash2, Plus, Wand2, Loader2,
-  Heart, Image as ImageIcon, Star,
+  Heart, Image as ImageIcon, Star, History as HistoryIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 const ChapterPlanner = lazy(() => import("@/components/ChapterPlanner").then((m) => ({ default: m.ChapterPlanner })));
 import { StorySetupWizard } from "@/components/StorySetupWizard";
+import { SaveIndicator } from "@/components/SaveIndicator";
 import { useStoryStore } from "@/store/storyStore";
 import { generateChapter, generateCharacter } from "@/lib/ai.functions";
 import { withTimeout } from "@/lib/with-timeout";
+import { backupBeforeGeneration, deleteStoryEverywhere } from "@/lib/story-sync";
+import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType } from "@/lib/character-types";
 
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
@@ -40,6 +43,7 @@ function StoryView() {
   const navigate = useNavigate();
   const story = useStoryStore((s) => s.stories.find((st) => st.id === id));
   const deleteStory = useStoryStore((s) => s.deleteStory);
+  void deleteStory;
   const toggleFav = useStoryStore((s) => s.toggleFavorite);
   const [tab, setTab] = useState<Tab>("chapters");
   const [search, setSearch] = useState("");
@@ -83,6 +87,10 @@ function StoryView() {
             <Button variant="ghost" size="icon" onClick={() => toggleFav(story.id)} title="Favoriet">
               <Heart className={story.favorite ? "fill-gold text-gold" : ""} />
             </Button>
+            <SaveIndicator />
+            <Button asChild variant="ghost" size="sm" title="Recovery Center">
+              <Link to="/story/$id/history" params={{ id: story.id }}><HistoryIcon /> Geschiedenis</Link>
+            </Button>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek..." className="pl-8 h-9 w-40" />
@@ -90,9 +98,9 @@ function StoryView() {
             <ExportMenu story={story} />
             <Button
               variant="ghost" size="icon"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("Verhaal verwijderen?")) {
-                  deleteStory(story.id);
+                  await deleteStoryEverywhere(story.id);
                   navigate({ to: "/" });
                 }
               }}
@@ -194,6 +202,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
 
   const generate = async (plan: ChapterPlan) => {
     setGenerating(true);
+    backupBeforeGeneration(storyId, `Voor hoofdstuk ${story.chapters.length + 1}`);
     try {
       // 1. Persist any brand-new locations before generation so they exist in context
       const createdLocs = [];

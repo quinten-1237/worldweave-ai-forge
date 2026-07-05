@@ -1,8 +1,13 @@
-export type CharacterStatus = "levend" | "dood" | "vermist";
+export type CharacterStatus = "levend" | "dood" | "vermist" | "gevangen" | "onbekend";
 
 export interface Character {
   id: string;
   name: string;
+  type?: import("@/lib/character-types").CharacterType;
+  typeFields?: Record<string, string>;
+  aliases?: string[];
+  biography?: string;
+  inventory?: string[];
   age?: string;
   gender?: string;
   appearance?: string;
@@ -16,7 +21,6 @@ export interface Character {
   portraitUrl?: string;
   currentLocationId?: string;
   injuries?: string[];
-
 }
 
 export interface Location {

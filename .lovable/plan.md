@@ -1,62 +1,105 @@
-## Goal
+## Fase 1 — Persistent Story Storage, Versies, Backups & Character Types
 
-Replace the current "Story Director" panel with a full **Chapter Planner** that runs before every chapter (1, 2, 3, …) and gives the user the same level of control each time — like a TV-series episode planner.
+Deze fase legt de fundering. Nu draait alles op localStorage; dat gaan we vervangen door de bestaande `stories`-tabel in Lovable Cloud, met versiegeschiedenis en herstelpunten. Character Types komen er direct in mee zodat het datamodel later niet weer migreert.
 
-## New Chapter Planner UI
+De grote features uit je briefing (World Bible engine, Future Planner, Secret Scheduler, PDF/DOCX-export, kaart, offline sync, multi-device conflict resolution, …) komen in latere fases. Dit document is Fase 1.
 
-A single screen, opened by a "Plan & Generate Chapter N" button on the Chapters tab. Six collapsible panels:
+### Wat de gebruiker gaat merken
 
-1. **Characters** — per character: Not present / Background / Supporting / Main, plus toggles "Has dialogue", "Viewpoint character", "Key scene".
-2. **Locations** — multi-select existing locations + inline "create new location" form. Chapter can span multiple locations.
-3. **Character → Location assignment** — for each included character, dropdown of selected locations. Characters only appear where assigned. Defaults to their last known location (continuity).
-4. **Events** — checkbox grid grouped by category (Political, Military, Personal, Fantasy) with a free-text "custom event" field. Multi-select.
-5. **Story goals** — multi-select chips (Character development, Worldbuilding, Political intrigue, Romance, War prep, Mystery, Adventure, Action, Horror…).
-6. **Relationship changes** — repeatable row: Character A + Character B + change type (Become friends / enemies / Romance starts / ends / Alliance / Trust broken / Custom).
-7. **Chapter length** — Short 1000 / Medium 2000 / Long 3000 / Epic 5000+.
-8. **Extra instructions** — free-text.
+- Verhalen leven in de cloud en verschijnen op elk apparaat waar je inlogt.
+- Boven aan het scherm staat een status: *Bezig met opslaan… / Opgeslagen*.
+- Voor elke wijziging wordt automatisch een versie bewaard. Voor elke AI-generatie wordt een backup gemaakt.
+- Nieuw menu **Recovery Center** met tijdlijn van versies + backups, preview en één-klik herstellen.
+- Bij het maken van een personage kies je eerst een **Character Type** (Mens, Draak, Direwolf, Wolf, Hond, Paard, Reus, White Walker, Kind van het Bos, Mythisch wezen, Beest, Vogel, Zeewezen, Demon, Geest, Onbekend, Aangepast). Type-specifieke velden verschijnen automatisch.
 
-Bottom bar: **Save preset**, **Load preset**, **Duplicate previous chapter setup**, **Generate Chapter**.
+### Wat *niet* in Fase 1 zit (komt daarna)
 
-## Continuity engine
+- Future Planner + Secret Scheduler (fase 2, direct hierna).
+- World Bible auto-update + Consistency Engine bij generatie.
+- PDF/DOCX export, PDF/DOCX import, kaart, animals/magic/timeline UI-pagina's.
+- Offline queue en cross-device conflict-merge UI. Basissynchronisatie via realtime werkt wel.
 
-A new `src/lib/continuity.ts` derives, from existing chapters + timeline + character status:
-- last known location per character (tracked as `currentLocationId` updated after each chapter),
-- alive/dead/missing status (already stored),
-- active alliances / conflicts / ongoing plots / injuries (extracted from timeline events tagged by type).
+### Technisch — datamodel
 
-The planner pre-fills character locations from this. The generator prompt receives a "Continuity facts" block so characters never teleport, dead stay dead, etc.
+De bestaande `stories`-tabel blijft de bron van waarheid: `data jsonb` bevat de volledige `Story` (chapters, characters, locations, factions, relationships, timeline, presets, …). Twee nieuwe tabellen:
 
-## Data model additions
+```text
+story_versions          # elke autosave-diff
+  id, story_id, user_id, data jsonb, summary text, created_at, kind='autosave'|'manual'
 
-- `Character.currentLocationId?: string`, `Character.injuries?: string[]`.
-- `Story.relationships: { id, a, b, type, since }[]`.
-- `Story.chapterPresets: ChapterPlan[]` (saved configurations).
-- `Chapter.plan?: ChapterPlan` (snapshot of what generated it, used for "Duplicate previous setup").
-- `ChapterPlan`: characters[{id, role, dialogue, viewpoint, keyScene, locationId}], locationIds[], newLocations[], events[], goals[], relationshipChanges[], length, extra.
+story_backups           # snapshots vóór AI-generatie / dagelijks / handmatig
+  id, story_id, user_id, data jsonb, label text, created_at, kind='pre-generation'|'daily'|'manual'
+```
 
-All persisted in the existing zustand store (no DB schema change needed — stories already serialize as JSONB).
+Beide met RLS `auth.uid() = user_id`, GRANT voor `authenticated` + `service_role`, en `story_id` FK naar `stories(id) ON DELETE CASCADE`. Retentie: versies dun-uitknijpen na 100 (elke 10e blijft); backups onbeperkt.
 
-## Generator changes
+`Character` in `src/types/story.ts` krijgt:
+```ts
+type: CharacterType;           // 'human' | 'dragon' | 'direwolf' | 'horse' | 'white_walker' | ...
+typeFields: Record<string,string>;  // fire_color, wingspan, pack, breed, rank, occupation, house, ...
+inventory?: string[];
+aliases?: string[];
+biography?: string;
+```
 
-`generateChapter` server fn gains `plan: ChapterPlan` and `continuity: ContinuityFacts` inputs. The prompt builder composes a strict directive block: required characters per location, forbidden characters, mandatory events, goals, target word count, relationship transitions to depict, and continuity facts. After generation, post-processing updates each included character's `currentLocationId` to their assigned location and appends relationship changes to `story.relationships`.
+De bestaande `house`-informatie zit al in `relationships`; we voegen `house` als los veld toe voor `type='human'`.
 
-## Files
+### Technisch — sync-laag
 
-New:
-- `src/components/ChapterPlanner.tsx` — the planner UI (replaces StoryDirector usage).
-- `src/lib/continuity.ts` — derive continuity facts + apply post-chapter updates.
-- `src/lib/chapter-plan.ts` — types + prompt serialization + preset save/load helpers.
+Nieuwe `src/lib/story-sync.ts`:
 
-Edited:
-- `src/types/story.ts` — add fields above.
-- `src/store/storyStore.ts` — actions: `saveChapterPreset`, `deleteChapterPreset`, `applyChapterOutcome` (locations, relationships).
-- `src/lib/ai.functions.ts` — extend `generateChapter` input schema + prompt with plan & continuity.
-- `src/lib/story-context.ts` — include relationships + continuity in context.
-- `src/routes/story.$id.tsx` — swap `<StoryDirector>` for `<ChapterPlanner>`; first chapter uses the same planner (no special case).
-- `src/components/StoryDirector.tsx` — removed (superseded).
+- `useStoryStore` (zustand) blijft de client-cache, maar de `persist`-middleware gaat weg.
+- Bij login: `loadStoriesFromCloud()` → `stories`-tabel lezen (via `createServerFn` + `requireSupabaseAuth`) en in de store zetten.
+- Bij elke `updateStory` / `updateCharacter` / … in de store: `queueSave(storyId)` → 800ms debounce → `saveStoryToCloud` server-fn die (1) UPDATE stories.data, (2) INSERT story_versions row.
+- `saveBackup(storyId, kind, label)` server-fn wordt aangeroepen vóór `generateChapter` en `generateCharacter`, plus dagelijks bij eerste load van een verhaal.
+- Realtime channel op `stories` en `story_versions` → invalideert queryClient → andere apparaten pullen de nieuwe versie.
 
-## Out of scope
+Server functions in `src/lib/story-sync.functions.ts`:
+```
+listStories()  → { id, title, updated_at }[]
+loadStory(id)  → Story
+saveStory({ id, data, summary? })
+listVersions(storyId) → StoryVersion[]
+listBackups(storyId) → StoryBackup[]
+restoreVersion(versionId) / restoreBackup(backupId)
+saveBackup({ storyId, kind, label })
+```
 
-- No backend schema migration (everything fits in the existing `stories.data` JSONB).
-- Image generation stays disabled (per earlier requirement).
-- No translation pass — UI stays in the existing Dutch.
+Alle met `.middleware([requireSupabaseAuth])`; anon-toegang is er niet.
+
+Bestaande localStorage-inhoud wordt éénmalig geïmporteerd bij eerste login (`migrateLocalStorageToCloud`) en dan gewist.
+
+### Technisch — UI
+
+- Nieuwe `<SaveIndicator />` in de header van `story.$id.tsx`: reageert op een `syncStatus` store (`idle | saving | saved | error`).
+- Nieuwe route `src/routes/story.$id.history.tsx` = Recovery Center: twee tabs (Versies / Backups), lijst met tijd + omschrijving, preview-panel (readonly render), knop *Herstel deze versie* (creëert eerst een backup van de huidige staat, dan overschrijft).
+- `CharacterEditor` (bestaand in `story.$id.tsx`) krijgt bovenaan een `Select` voor Character Type; per gekozen type een dynamische veldenset uit `src/lib/character-types.ts`.
+- `generateCharacter` server-fn krijgt `type` als input; system prompt vermeldt het type zodat de AI passende velden invult.
+
+### Files
+
+Nieuw:
+- migratie: `story_versions`, `story_backups`, GRANTs, RLS, indexes op `(story_id, created_at desc)`.
+- `src/lib/story-sync.ts` (client sync/debounce/realtime)
+- `src/lib/story-sync.functions.ts` (server fns)
+- `src/lib/character-types.ts` (types + veldschema's)
+- `src/components/SaveIndicator.tsx`
+- `src/components/CharacterTypeSelect.tsx`
+- `src/routes/story.$id.history.tsx` (Recovery Center)
+
+Aangepast:
+- `src/types/story.ts` — Character krijgt `type`, `typeFields`, `inventory`, `aliases`, `biography`.
+- `src/store/storyStore.ts` — `persist` verwijderen, bij elke mutatie `queueSave` triggeren.
+- `src/lib/ai.functions.ts` — `generateCharacter` accepteert `type`; roep `saveBackup` vóór `generateChapter`.
+- `src/routes/story.$id.tsx` — SaveIndicator + Recovery-link + CharacterType in de editor.
+- `src/routes/__root.tsx` — bij session `loadStoriesFromCloud` starten; realtime channel opzetten.
+- `src/routes/library.tsx` — leest uit gesynchroniseerde store.
+
+### Risico's die ik expliciet afvang
+
+- Grote `data`-JSONB per save: we schrijven de hele blob, dat is bewust simpel voor Fase 1. Retentie voor `story_versions` wordt beperkt tot 100 rijen per verhaal (trigger die overtollige oude rijen dunt), backups blijven onbeperkt zoals gevraagd.
+- Bestaande `Chapter[]` in JSONB kan groot worden; huidige verhalen blijven ruim onder de 1 MB per row-grens.
+- Race conditions tussen tabs: elke save stuurt `updated_at`; als de server-versie nieuwer is dan de client-versie, weigert de save en toont Recovery Center een merge-hint. Volledige merge-UI komt in een latere fase.
+- Character Types met dynamische velden: `typeFields` is een vrije `Record<string,string>` — geen migratie nodig als we later velden toevoegen.
+
+Zeg akkoord en ik begin met de migratie (nieuwe tabellen) — dat is de eerste stap en de rest hangt eraan vast.
