@@ -13,20 +13,36 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — StoryForge AI" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+  }),
   component: AuthPage,
 });
+
+function resolveRedirectTarget(next: string): string {
+  if (next && next.startsWith("/") && !next.startsWith("//")) {
+    return window.location.origin + next;
+  }
+  return window.location.origin;
+}
 
 function AuthPage() {
   const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { if (!loading && user) navigate({ to: "/" }); }, [user, loading, navigate]);
+  useEffect(() => {
+    if (!loading && user) {
+      if (next) window.location.replace(next);
+      else navigate({ to: "/" });
+    }
+  }, [user, loading, navigate, next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +51,7 @@ function AuthPage() {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { emailRedirectTo: window.location.origin, data: { full_name: name } },
+          options: { emailRedirectTo: resolveRedirectTarget(next), data: { full_name: name } },
         });
         if (error) throw error;
         toast.success(t("toast.saved"));
@@ -50,7 +66,7 @@ function AuthPage() {
   const google = async () => {
     setBusy(true);
     try {
-      const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: resolveRedirectTarget(next) });
       if (r.error) throw r.error;
     } catch (e) { toast.error((e as Error).message); setBusy(false); }
   };
