@@ -221,7 +221,9 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
 
       // 2. Re-read latest story (with new locations applied)
       const fresh = useStoryStore.getState().stories.find((st) => st.id === storyId)!;
-      const ctx = buildStoryContext(fresh);
+      const nextChapterNumber = fresh.chapters.length + 1;
+      // World Bible: story context + future plans (spoiler-filtered) + unlockable secrets
+      const ctx = buildWorldBible(fresh, nextChapterNumber);
       const prev = buildPreviousSummary(fresh);
       const continuity = continuityToText(deriveContinuity(fresh));
       const directorInstructions = planToInstructions(plan, fresh);
