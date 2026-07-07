@@ -143,6 +143,7 @@ function StoryView() {
               {tab === "locations" && <LocationsTab storyId={story.id} search={search} />}
               {tab === "factions" && <FactionsTab storyId={story.id} search={search} />}
               {tab === "magic" && <MagicTab storyId={story.id} />}
+              {tab === "future" && <FutureTab storyId={story.id} />}
               {tab === "encyclopedia" && <EncyclopediaTab storyId={story.id} />}
               {tab === "stats" && <StatsTab storyId={story.id} totalWords={totalWords} />}
             </motion.div>
