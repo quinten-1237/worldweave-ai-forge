@@ -399,7 +399,7 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
   const aiGenerate = async () => {
     setGenerating(true);
     try {
-      const ctx = buildStoryContext(story);
+      const ctx = buildWorldBible(story, story.chapters.length + 1);
       const c = await withTimeout(genChar({ data: { storyContext: ctx } }), 15_000, "personage-generatie");
       addCharacter(storyId, { ...c, status: "levend" });
       toast.success(`${c.name} toegevoegd`);
