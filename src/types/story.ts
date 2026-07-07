@@ -83,6 +83,43 @@ export interface TimelineEvent {
   createdAt: number;
 }
 
+export type FuturePlanKind = "mystery" | "war" | "revelation" | "prophecy" | "event";
+export type FuturePlanStatus = "planned" | "seeded" | "unfolding" | "revealed" | "cancelled";
+
+export interface FuturePlan {
+  id: string;
+  kind: FuturePlanKind;
+  title: string;
+  description: string;
+  /** Vroegste hoofdstuk waarin dit mag beginnen door te sijpelen. */
+  earliestChapter?: number;
+  /** Doel-hoofdstuk voor de volledige onthulling / climax. */
+  targetChapter?: number;
+  status: FuturePlanStatus;
+  hints?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SecretPlan {
+  id: string;
+  title: string;
+  /** De volledige geheime waarheid. Alleen zichtbaar voor de AI wanneer voorwaarden vervuld zijn. */
+  truth: string;
+  /** Wie/wat weet dit — voor de auteur. */
+  owner?: string;
+  /** Trigger: hoofdstuknummer waarop het geheim onthuld mag worden. */
+  revealAtChapter?: number;
+  /** Trigger: id van een FuturePlan dat onthuld/revealed moet zijn. */
+  revealAfterPlanId?: string;
+  /** Trigger: naam van een gebeurtenis in de tijdlijn (case-insensitive contains). */
+  revealAfterEvent?: string;
+  revealed: boolean;
+  revealedInChapter?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Story {
   id: string;
   title: string;
@@ -104,6 +141,8 @@ export interface Story {
   timeline: TimelineEvent[];
   relationships?: StoryRelationship[];
   chapterPresets?: import("@/lib/chapter-plan").ChapterPreset[];
+  futurePlans?: FuturePlan[];
+  secrets?: SecretPlan[];
   favorite?: boolean;
   createdAt: number;
   updatedAt: number;

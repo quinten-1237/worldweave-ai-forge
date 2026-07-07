@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship } from "@/types/story";
+import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship, FuturePlan, SecretPlan } from "@/types/story";
 import type { ChapterPlan, ChapterPreset, RelationshipChange } from "@/lib/chapter-plan";
 
 
@@ -43,6 +43,15 @@ interface State {
     assignments: { characterId: string; locationId: string }[],
     relationshipChanges: RelationshipChange[],
   ) => void;
+
+  addFuturePlan: (storyId: string, p: Omit<FuturePlan, "id" | "createdAt" | "updatedAt">) => FuturePlan;
+  updateFuturePlan: (storyId: string, planId: string, patch: Partial<FuturePlan>) => void;
+  removeFuturePlan: (storyId: string, planId: string) => void;
+
+  addSecret: (storyId: string, s: Omit<SecretPlan, "id" | "createdAt" | "updatedAt" | "revealed">) => SecretPlan;
+  updateSecret: (storyId: string, secretId: string, patch: Partial<SecretPlan>) => void;
+  removeSecret: (storyId: string, secretId: string) => void;
+  markSecretRevealed: (storyId: string, secretId: string, chapterNumber: number) => void;
 
   importStory: (story: Story) => void;
 }
@@ -320,6 +329,89 @@ export const useStoryStore = create<State>()(
               updatedAt: Date.now(),
             };
           }),
+        })),
+
+      addFuturePlan: (storyId, p) => {
+        const plan: FuturePlan = { ...p, id: uid(), createdAt: Date.now(), updatedAt: Date.now() };
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, futurePlans: [...(st.futurePlans ?? []), plan], updatedAt: Date.now() }
+              : st,
+          ),
+        }));
+        return plan;
+      },
+      updateFuturePlan: (storyId, planId, patch) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  futurePlans: (st.futurePlans ?? []).map((p) =>
+                    p.id === planId ? { ...p, ...patch, updatedAt: Date.now() } : p,
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : st,
+          ),
+        })),
+      removeFuturePlan: (storyId, planId) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, futurePlans: (st.futurePlans ?? []).filter((p) => p.id !== planId) }
+              : st,
+          ),
+        })),
+
+      addSecret: (storyId, sec) => {
+        const secret: SecretPlan = { ...sec, id: uid(), revealed: false, createdAt: Date.now(), updatedAt: Date.now() };
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, secrets: [...(st.secrets ?? []), secret], updatedAt: Date.now() }
+              : st,
+          ),
+        }));
+        return secret;
+      },
+      updateSecret: (storyId, secretId, patch) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  secrets: (st.secrets ?? []).map((sc) =>
+                    sc.id === secretId ? { ...sc, ...patch, updatedAt: Date.now() } : sc,
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : st,
+          ),
+        })),
+      removeSecret: (storyId, secretId) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, secrets: (st.secrets ?? []).filter((sc) => sc.id !== secretId) }
+              : st,
+          ),
+        })),
+      markSecretRevealed: (storyId, secretId, chapterNumber) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  secrets: (st.secrets ?? []).map((sc) =>
+                    sc.id === secretId
+                      ? { ...sc, revealed: true, revealedInChapter: chapterNumber, updatedAt: Date.now() }
+                      : sc,
+                  ),
+                }
+              : st,
+          ),
         })),
 
       importStory: (story) =>
