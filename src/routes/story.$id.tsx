@@ -189,6 +189,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
   const addLocation = useStoryStore((s) => s.addLocation);
   const addTimelineEvent = useStoryStore((s) => s.addTimelineEvent);
   const applyChapterOutcome = useStoryStore((s) => s.applyChapterOutcome);
+  const markSecretRevealed = useStoryStore((s) => s.markSecretRevealed);
   const genChapter = useServerFn(generateChapter);
   const [generating, setGenerating] = useState(false);
   const [openChapter, setOpenChapter] = useState<string | null>(
