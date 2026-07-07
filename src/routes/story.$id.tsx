@@ -232,7 +232,7 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
         data: {
           storyContext: ctx,
           previousSummary: prev,
-          chapterNumber: fresh.chapters.length + 1,
+          chapterNumber: nextChapterNumber,
           userChoice: plan.userChoice,
           directorInstructions,
           continuity,
