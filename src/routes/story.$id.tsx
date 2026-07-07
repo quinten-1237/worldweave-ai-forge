@@ -257,6 +257,12 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
       const assignments = resolvePlanedAssignments(plan, fresh, createdLocs);
       applyChapterOutcome(storyId, newChap.number, assignments, plan.relationshipChanges);
 
+      // 4. Secret Scheduler: mark alle geheimen waarvan voorwaarden nu vervuld zijn als revealed
+      const { unlockable } = partitionSecrets(fresh, nextChapterNumber);
+      for (const sc of unlockable) {
+        if (!sc.revealed) markSecretRevealed(storyId, sc.id, nextChapterNumber);
+      }
+
       setOpenChapter(newChap.id);
       toast.success(`Hoofdstuk ${newChap.number} klaar`);
     } catch (e) {
