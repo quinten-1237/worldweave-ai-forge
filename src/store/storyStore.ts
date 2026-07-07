@@ -44,6 +44,15 @@ interface State {
     relationshipChanges: RelationshipChange[],
   ) => void;
 
+  addFuturePlan: (storyId: string, p: Omit<FuturePlan, "id" | "createdAt" | "updatedAt">) => FuturePlan;
+  updateFuturePlan: (storyId: string, planId: string, patch: Partial<FuturePlan>) => void;
+  removeFuturePlan: (storyId: string, planId: string) => void;
+
+  addSecret: (storyId: string, s: Omit<SecretPlan, "id" | "createdAt" | "updatedAt" | "revealed">) => SecretPlan;
+  updateSecret: (storyId: string, secretId: string, patch: Partial<SecretPlan>) => void;
+  removeSecret: (storyId: string, secretId: string) => void;
+  markSecretRevealed: (storyId: string, secretId: string, chapterNumber: number) => void;
+
   importStory: (story: Story) => void;
 }
 
