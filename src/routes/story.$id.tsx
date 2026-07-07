@@ -24,11 +24,12 @@ import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType
 
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
+import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
 import { deriveContinuity, continuityToText } from "@/lib/continuity";
 import { type ChapterPlan, planToInstructions, LENGTH_WORDS, resolvePlanedAssignments } from "@/lib/chapter-plan";
 import { toast } from "sonner";
-import type { Character, Location, Faction, Chapter } from "@/types/story";
+import type { Character, Location, Faction, Chapter, FuturePlan, SecretPlan, FuturePlanKind, FuturePlanStatus } from "@/types/story";
 
 
 export const Route = createFileRoute("/story/$id")({
