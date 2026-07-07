@@ -23,7 +23,7 @@ import { backupBeforeGeneration, deleteStoryEverywhere } from "@/lib/story-sync"
 import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType } from "@/lib/character-types";
 
 import { ImageUploader } from "@/components/ImageUploader";
-import { buildStoryContext, buildPreviousSummary } from "@/lib/story-context";
+import { buildPreviousSummary } from "@/lib/story-context";
 import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
 import { deriveContinuity, continuityToText } from "@/lib/continuity";
