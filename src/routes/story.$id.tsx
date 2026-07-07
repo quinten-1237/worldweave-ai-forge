@@ -469,7 +469,11 @@ function CharactersTab({ storyId, search }: { storyId: string; search: string })
 function CharacterEditor({
   character, onSave, onClose,
 }: { character: Character; onSave: (c: Partial<Character>) => void; onClose: () => void }) {
-  const [c, setC] = useState(character);
+  const [c, setC] = useState<Character>({
+    ...character,
+    type: character.type ?? "human",
+    typeFields: character.typeFields ?? {},
+  });
   const fields: { k: keyof Character; l: string; multi?: boolean }[] = [
     { k: "name", l: "Naam" }, { k: "age", l: "Leeftijd" }, { k: "gender", l: "Geslacht" },
     { k: "appearance", l: "Uiterlijk", multi: true }, { k: "personality", l: "Persoonlijkheid", multi: true },
@@ -477,11 +481,43 @@ function CharacterEditor({
     { k: "secrets", l: "Geheimen", multi: true }, { k: "skills", l: "Vaardigheden", multi: true },
     { k: "relationships", l: "Relaties", multi: true },
   ];
+  const activeType: CharacterType = c.type ?? "human";
+  const typeFields = TYPE_FIELDS[activeType] ?? [];
+  const setTypeField = (key: string, value: string) =>
+    setC({ ...c, typeFields: { ...(c.typeFields ?? {}), [key]: value } });
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-card border border-gold/40 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-thin shadow-gold" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-display text-2xl mb-4 gradient-gold-text">{character.id ? "Bewerk" : "Nieuw"} personage</h2>
         <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Character Type</Label>
+            <select
+              value={activeType}
+              onChange={(e) => setC({ ...c, type: e.target.value as CharacterType, typeFields: {} })}
+              className="w-full h-9 rounded-md border border-input bg-input px-3 text-sm"
+            >
+              {CHARACTER_TYPES.map((t) => (
+                <option key={t} value={t}>{CHARACTER_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          {typeFields.length > 0 && (
+            <div className="rounded-md border border-gold/20 bg-gold/5 p-3 space-y-2">
+              <p className="text-xs text-gold/80 font-medium">Type-specifieke velden ({CHARACTER_TYPE_LABELS[activeType]})</p>
+              {typeFields.map((tf) => (
+                <div key={tf.key}>
+                  <Label className="text-xs">{tf.label}</Label>
+                  {tf.multi ? (
+                    <Textarea rows={2} value={c.typeFields?.[tf.key] ?? ""} onChange={(e) => setTypeField(tf.key, e.target.value)} />
+                  ) : (
+                    <Input value={c.typeFields?.[tf.key] ?? ""} onChange={(e) => setTypeField(tf.key, e.target.value)} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {fields.map((f) => (
             <div key={f.k}>
               <Label className="text-xs">{f.l}</Label>
@@ -506,6 +542,224 @@ function CharacterEditor({
           <Button variant="hero" onClick={() => { if (!c.name.trim()) return toast.error("Naam vereist"); onSave(c); }}>Opslaan</Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============ FUTURE PLANNER + SECRET SCHEDULER ============ */
+
+const FUTURE_KIND_LABELS: Record<FuturePlanKind, string> = {
+  mystery: "Mysterie",
+  war: "Oorlog",
+  revelation: "Onthulling",
+  prophecy: "Profetie",
+  event: "Gebeurtenis",
+};
+const FUTURE_STATUS_LABELS: Record<FuturePlanStatus, string> = {
+  planned: "Gepland",
+  seeded: "Gezaaid",
+  unfolding: "Ontvouwt",
+  revealed: "Onthuld",
+  cancelled: "Geannuleerd",
+};
+
+function FutureTab({ storyId }: { storyId: string }) {
+  const story = useStoryStore((s) => s.stories.find((st) => st.id === storyId)!);
+  const addPlan = useStoryStore((s) => s.addFuturePlan);
+  const updatePlan = useStoryStore((s) => s.updateFuturePlan);
+  const removePlan = useStoryStore((s) => s.removeFuturePlan);
+  const addSecret = useStoryStore((s) => s.addSecret);
+  const updateSecret = useStoryStore((s) => s.updateSecret);
+  const removeSecret = useStoryStore((s) => s.removeSecret);
+  const nextChapter = story.chapters.length + 1;
+
+  const plans = story.futurePlans ?? [];
+  const secrets = story.secrets ?? [];
+
+  const newPlan = () =>
+    addPlan(storyId, {
+      kind: "mystery",
+      title: "Nieuw plan",
+      description: "",
+      status: "planned",
+      earliestChapter: nextChapter,
+      targetChapter: nextChapter + 5,
+    });
+
+  const newSecret = () =>
+    addSecret(storyId, {
+      title: "Nieuw geheim",
+      truth: "",
+      revealAtChapter: nextChapter + 3,
+    });
+
+  return (
+    <div className="space-y-10">
+      <div className="rounded-lg border border-gold/20 bg-gold/5 p-4 text-sm text-foreground/80">
+        <p className="font-display text-gold text-base mb-1">Story Bible</p>
+        Toekomstige mysteries, oorlogen en onthullingen — plus geheimen die pas onthuld worden zodra
+        hun voorwaarden vervuld zijn. De AI ziet alleen wat op dit moment (hoofdstuk {nextChapter})
+        mag lekken; de rest blijft verborgen.
+      </div>
+
+      {/* FUTURE PLANS */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl">Future Planner</h2>
+          <Button variant="hero" size="sm" onClick={newPlan}><Plus /> Nieuw plan</Button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {plans.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">Nog geen toekomstplannen — voeg mysteries of oorlogen toe die later in het verhaal moeten culmineren.</p>
+          )}
+          {plans.map((p) => (
+            <FuturePlanCard
+              key={p.id}
+              plan={p}
+              currentChapter={nextChapter}
+              onChange={(patch) => updatePlan(storyId, p.id, patch)}
+              onDelete={() => { if (confirm(`Verwijder "${p.title}"?`)) removePlan(storyId, p.id); }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* SECRETS */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl">Secret Scheduler</h2>
+          <Button variant="hero" size="sm" onClick={newSecret}><Plus /> Nieuw geheim</Button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {secrets.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">Nog geen geheimen. Geheimen blijven verborgen tot hun trigger (hoofdstuknummer, gekoppeld plan of gebeurtenis) vervuld is.</p>
+          )}
+          {secrets.map((sc) => (
+            <SecretCard
+              key={sc.id}
+              secret={sc}
+              plans={plans}
+              currentChapter={nextChapter}
+              revealed={sc.revealed}
+              onChange={(patch) => updateSecret(storyId, sc.id, patch)}
+              onDelete={() => { if (confirm(`Verwijder "${sc.title}"?`)) removeSecret(storyId, sc.id); }}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function FuturePlanCard({
+  plan, currentChapter, onChange, onDelete,
+}: {
+  plan: FuturePlan;
+  currentChapter: number;
+  onChange: (patch: Partial<FuturePlan>) => void;
+  onDelete: () => void;
+}) {
+  const numOrUndef = (v: string) => (v === "" ? undefined : Math.max(1, parseInt(v, 10) || 1));
+  const isFuture = plan.earliestChapter != null && currentChapter < plan.earliestChapter;
+  return (
+    <div className={`bg-card border rounded-xl p-4 space-y-2 ${isFuture ? "border-border" : "border-gold/40"}`}>
+      <div className="flex gap-2">
+        <Input value={plan.title} onChange={(e) => onChange({ title: e.target.value })} className="font-display" />
+        <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 /></Button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Soort</Label>
+          <select value={plan.kind} onChange={(e) => onChange({ kind: e.target.value as FuturePlanKind })} className="w-full h-9 rounded-md border border-input bg-input px-3 text-sm">
+            {(Object.keys(FUTURE_KIND_LABELS) as FuturePlanKind[]).map((k) => (
+              <option key={k} value={k}>{FUTURE_KIND_LABELS[k]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <Label className="text-xs">Status</Label>
+          <select value={plan.status} onChange={(e) => onChange({ status: e.target.value as FuturePlanStatus })} className="w-full h-9 rounded-md border border-input bg-input px-3 text-sm">
+            {(Object.keys(FUTURE_STATUS_LABELS) as FuturePlanStatus[]).map((k) => (
+              <option key={k} value={k}>{FUTURE_STATUS_LABELS[k]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Beschrijving (auteurs-only, wordt door AI gelezen)</Label>
+        <Textarea rows={3} value={plan.description} onChange={(e) => onChange({ description: e.target.value })} />
+      </div>
+      <div>
+        <Label className="text-xs">Hints om te zaaien</Label>
+        <Textarea rows={2} value={plan.hints ?? ""} onChange={(e) => onChange({ hints: e.target.value })} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Vroegste hoofdstuk</Label>
+          <Input type="number" min={1} value={plan.earliestChapter ?? ""} onChange={(e) => onChange({ earliestChapter: numOrUndef(e.target.value) })} />
+        </div>
+        <div>
+          <Label className="text-xs">Doel-hoofdstuk (climax)</Label>
+          <Input type="number" min={1} value={plan.targetChapter ?? ""} onChange={(e) => onChange({ targetChapter: numOrUndef(e.target.value) })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecretCard({
+  secret, plans, currentChapter, revealed, onChange, onDelete,
+}: {
+  secret: SecretPlan;
+  plans: FuturePlan[];
+  currentChapter: number;
+  revealed: boolean;
+  onChange: (patch: Partial<SecretPlan>) => void;
+  onDelete: () => void;
+}) {
+  const numOrUndef = (v: string) => (v === "" ? undefined : Math.max(1, parseInt(v, 10) || 1));
+  return (
+    <div className={`bg-card border rounded-xl p-4 space-y-2 ${revealed ? "border-gold/60" : "border-border"}`}>
+      <div className="flex gap-2 items-center">
+        <Input value={secret.title} onChange={(e) => onChange({ title: e.target.value })} className="font-display" />
+        {revealed ? (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gold/20 text-gold whitespace-nowrap">Onthuld{secret.revealedInChapter ? ` h${secret.revealedInChapter}` : ""}</span>
+        ) : (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">Verborgen</span>
+        )}
+        <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 /></Button>
+      </div>
+      <div>
+        <Label className="text-xs">Eigenaar / Wie weet dit</Label>
+        <Input value={secret.owner ?? ""} onChange={(e) => onChange({ owner: e.target.value })} />
+      </div>
+      <div>
+        <Label className="text-xs">De volledige waarheid (blijft geheim tot trigger)</Label>
+        <Textarea rows={3} value={secret.truth} onChange={(e) => onChange({ truth: e.target.value })} />
+      </div>
+      <p className="text-xs text-muted-foreground pt-1">Trigger — één is genoeg:</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Onthullen vanaf hoofdstuk</Label>
+          <Input type="number" min={1} placeholder={String(currentChapter)} value={secret.revealAtChapter ?? ""} onChange={(e) => onChange({ revealAtChapter: numOrUndef(e.target.value) })} />
+        </div>
+        <div>
+          <Label className="text-xs">Na plan (revealed)</Label>
+          <select value={secret.revealAfterPlanId ?? ""} onChange={(e) => onChange({ revealAfterPlanId: e.target.value || undefined })} className="w-full h-9 rounded-md border border-input bg-input px-3 text-sm">
+            <option value="">— geen —</option>
+            {plans.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Na tijdlijn-gebeurtenis (bevat)</Label>
+        <Input value={secret.revealAfterEvent ?? ""} onChange={(e) => onChange({ revealAfterEvent: e.target.value || undefined })} placeholder="bv. 'de kroning'" />
+      </div>
+      {revealed && (
+        <Button size="sm" variant="ghost" onClick={() => onChange({ revealed: false, revealedInChapter: undefined })}>
+          Terug naar verborgen
+        </Button>
+      )}
     </div>
   );
 }
