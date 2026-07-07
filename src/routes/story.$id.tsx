@@ -68,6 +68,7 @@ function StoryView() {
     { key: "locations", label: "Locaties", icon: MapPin, count: story.locations.length },
     { key: "factions", label: "Facties", icon: Shield, count: story.factions.length },
     { key: "magic", label: "Magie", icon: Sparkles },
+    { key: "future", label: "Toekomst", icon: Wand2, count: (story.futurePlans?.length ?? 0) + (story.secrets?.length ?? 0) },
     { key: "encyclopedia", label: "Encyclopedie", icon: LibraryIcon },
     { key: "stats", label: "Statistieken", icon: Clock },
   ];
