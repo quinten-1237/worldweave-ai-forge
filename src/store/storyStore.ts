@@ -331,6 +331,89 @@ export const useStoryStore = create<State>()(
           }),
         })),
 
+      addFuturePlan: (storyId, p) => {
+        const plan: FuturePlan = { ...p, id: uid(), createdAt: Date.now(), updatedAt: Date.now() };
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, futurePlans: [...(st.futurePlans ?? []), plan], updatedAt: Date.now() }
+              : st,
+          ),
+        }));
+        return plan;
+      },
+      updateFuturePlan: (storyId, planId, patch) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  futurePlans: (st.futurePlans ?? []).map((p) =>
+                    p.id === planId ? { ...p, ...patch, updatedAt: Date.now() } : p,
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : st,
+          ),
+        })),
+      removeFuturePlan: (storyId, planId) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, futurePlans: (st.futurePlans ?? []).filter((p) => p.id !== planId) }
+              : st,
+          ),
+        })),
+
+      addSecret: (storyId, sec) => {
+        const secret: SecretPlan = { ...sec, id: uid(), revealed: false, createdAt: Date.now(), updatedAt: Date.now() };
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, secrets: [...(st.secrets ?? []), secret], updatedAt: Date.now() }
+              : st,
+          ),
+        }));
+        return secret;
+      },
+      updateSecret: (storyId, secretId, patch) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  secrets: (st.secrets ?? []).map((sc) =>
+                    sc.id === secretId ? { ...sc, ...patch, updatedAt: Date.now() } : sc,
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : st,
+          ),
+        })),
+      removeSecret: (storyId, secretId) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? { ...st, secrets: (st.secrets ?? []).filter((sc) => sc.id !== secretId) }
+              : st,
+          ),
+        })),
+      markSecretRevealed: (storyId, secretId, chapterNumber) =>
+        set((s) => ({
+          stories: s.stories.map((st) =>
+            st.id === storyId
+              ? {
+                  ...st,
+                  secrets: (st.secrets ?? []).map((sc) =>
+                    sc.id === secretId
+                      ? { ...sc, revealed: true, revealedInChapter: chapterNumber, updatedAt: Date.now() }
+                      : sc,
+                  ),
+                }
+              : st,
+          ),
+        })),
+
       importStory: (story) =>
         set((s) => ({ stories: [{ ...story, id: uid() }, ...s.stories] })),
     }),
