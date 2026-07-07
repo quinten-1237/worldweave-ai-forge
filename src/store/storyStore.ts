@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship } from "@/types/story";
+import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship, FuturePlan, SecretPlan } from "@/types/story";
 import type { ChapterPlan, ChapterPreset, RelationshipChange } from "@/lib/chapter-plan";
 
 
