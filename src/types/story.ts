@@ -141,6 +141,8 @@ export interface Story {
   timeline: TimelineEvent[];
   relationships?: StoryRelationship[];
   chapterPresets?: import("@/lib/chapter-plan").ChapterPreset[];
+  futurePlans?: FuturePlan[];
+  secrets?: SecretPlan[];
   favorite?: boolean;
   createdAt: number;
   updatedAt: number;
