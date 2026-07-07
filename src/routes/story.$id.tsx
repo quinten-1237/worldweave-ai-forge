@@ -37,7 +37,7 @@ export const Route = createFileRoute("/story/$id")({
   component: StoryView,
 });
 
-type Tab = "chapters" | "characters" | "locations" | "factions" | "magic" | "encyclopedia" | "stats";
+type Tab = "chapters" | "characters" | "locations" | "factions" | "magic" | "future" | "encyclopedia" | "stats";
 
 function StoryView() {
   const { id } = Route.useParams();
