@@ -39,6 +39,59 @@ export function partitionSecrets(story: Story, chapterNumber: number) {
   return { unlockable, hidden };
 }
 
+/**
+ * Menselijke uitleg per trigger van een geheim: welke voorwaarden staan aan
+ * en welke zijn (nu, vóór hoofdstuk `chapterNumber`) al vervuld.
+ */
+export interface TriggerStatus {
+  label: string;
+  met: boolean;
+  detail?: string;
+}
+export function explainSecretTriggers(
+  secret: SecretPlan,
+  story: Story,
+  chapterNumber: number,
+): { triggers: TriggerStatus[]; willReveal: boolean } {
+  const triggers: TriggerStatus[] = [];
+  if (secret.revealAtChapter != null) {
+    const met = chapterNumber >= secret.revealAtChapter;
+    triggers.push({
+      label: `Onthullen vanaf hoofdstuk ${secret.revealAtChapter}`,
+      met,
+      detail: met ? `Nu bij h${chapterNumber} vervuld` : `Nog ${secret.revealAtChapter - chapterNumber} hoofdstukken te gaan`,
+    });
+  }
+  if (secret.revealAfterPlanId) {
+    const plan = story.futurePlans?.find((p) => p.id === secret.revealAfterPlanId);
+    const met = !!(plan && plan.status === "revealed");
+    triggers.push({
+      label: `Na plan: ${plan?.title ?? "onbekend plan"}`,
+      met,
+      detail: plan ? `Status: ${plan.status}` : "Plan bestaat niet meer",
+    });
+  }
+  if (secret.revealAfterEvent) {
+    const needle = secret.revealAfterEvent.toLowerCase();
+    const hit = story.timeline.find(
+      (e) =>
+        e.title.toLowerCase().includes(needle) ||
+        e.description.toLowerCase().includes(needle),
+    );
+    triggers.push({
+      label: `Na tijdlijn-gebeurtenis met "${secret.revealAfterEvent}"`,
+      met: !!hit,
+      detail: hit ? `Gevonden: ${hit.title}` : "Nog niet in tijdlijn",
+    });
+  }
+  if (triggers.length === 0) {
+    triggers.push({
+      label: "Geen trigger — dit geheim blijft eeuwig verborgen tot je het handmatig onthult",
+      met: false,
+    });
+  }
+  return { triggers, willReveal: shouldRevealSecret(secret, story, chapterNumber) };
+
 function futureLine(p: FuturePlan): string {
   const parts = [`[${p.kind}] ${p.title} (status: ${p.status})`];
   if (p.earliestChapter != null) parts.push(`vroegst: h${p.earliestChapter}`);
