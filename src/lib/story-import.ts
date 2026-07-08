@@ -95,7 +95,6 @@ async function readPdf(file: File): Promise<ImportPreview> {
   // Worker is heavy; use the ESM worker via URL. Fall back to no-worker mode
   // if the worker URL cannot be resolved (still works, just single-threaded).
   try {
-    // @ts-expect-error — vite worker URL
     const workerUrl = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
     pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
   } catch {
@@ -108,8 +107,7 @@ async function readPdf(file: File): Promise<ImportPreview> {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
     const text = content.items
-      // @ts-expect-error — items are TextItem[]
-      .map((it) => ("str" in it ? it.str : ""))
+      .map((it) => ("str" in it ? (it as { str: string }).str : ""))
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
