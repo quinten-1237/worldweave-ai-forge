@@ -33,7 +33,7 @@ function SettingsPage() {
   const theme = useTheme();
   const stories = useStoryStore((s) => s.stories);
 
-  useEffect(() => { if (!user) navigate({ to: "/auth" }); }, [user, navigate]);
+  useEffect(() => { if (!user) navigate({ to: "/auth", search: { next: "" } }); }, [user, navigate]);
   if (!user) return null;
 
   return (
@@ -155,7 +155,7 @@ function SettingsPage() {
 
           <TabsContent value="security" className="mt-6">
             <Card title={t("settings.security.logout_all")}>
-              <Button variant="outline" onClick={async () => { await signOut(); toast.success(t("toast.signed_out")); navigate({ to: "/auth" }); }}>
+              <Button variant="outline" onClick={async () => { await signOut(); toast.success(t("toast.signed_out")); navigate({ to: "/auth", search: { next: "" } }); }}>
                 <LogOut /> {t("btn.sign_out")}
               </Button>
             </Card>
