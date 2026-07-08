@@ -644,6 +644,7 @@ function FutureTab({ storyId }: { storyId: string }) {
               key={sc.id}
               secret={sc}
               plans={plans}
+              storyId={storyId}
               currentChapter={nextChapter}
               revealed={sc.revealed}
               onChange={(patch) => updateSecret(storyId, sc.id, patch)}
