@@ -49,7 +49,7 @@ export function ImageUploader({ value, onChange, bucket = "user-uploads", aspect
   if (!user) {
     return (
       <div className={`${aspectClass} ${className ?? ""} border border-dashed border-border rounded-lg flex items-center justify-center text-sm text-muted-foreground p-4 text-center`}>
-        <Link to="/auth" className="text-gold hover:underline">{t("btn.sign_in")}</Link>
+        <Link to="/auth" search={{ next: "" }} className="text-gold hover:underline">{t("btn.sign_in")}</Link>
       </div>
     );
   }

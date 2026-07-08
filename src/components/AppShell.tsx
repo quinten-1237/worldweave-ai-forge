@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-gold w-full"><LogOut className="h-3 w-3" />{t("btn.sign_out")}</button>
             </div>
           ) : (
-            <Link to="/auth" className="flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-gold/40 text-gold hover:bg-gold/10 text-sm">
+            <Link to="/auth" search={{ next: "" }} className="flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-gold/40 text-gold hover:bg-gold/10 text-sm">
               <LogIn className="h-4 w-4" /> {t("btn.sign_in")}
             </Link>
           )}

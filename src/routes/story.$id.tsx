@@ -24,7 +24,8 @@ import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType
 
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildPreviousSummary } from "@/lib/story-context";
-import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
+import { buildWorldBible, partitionSecrets, explainSecretTriggers } from "@/lib/world-bible";
+import { WorldBiblePreviewButton } from "@/components/WorldBiblePreview";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
 import { deriveContinuity, continuityToText } from "@/lib/continuity";
 import { type ChapterPlan, planToInstructions, LENGTH_WORDS, resolvePlanedAssignments } from "@/lib/chapter-plan";
@@ -297,10 +298,14 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
               )}
             {(story.chapters.length > 0 ||
               (story.beginningState?.trim() && story.endGoal?.trim())) && (
-              <Suspense fallback={<div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Planner laden…</div>}>
-                <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
-              </Suspense>
-
+              <>
+                <div className="flex justify-end">
+                  <WorldBiblePreviewButton storyId={storyId} />
+                </div>
+                <Suspense fallback={<div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Planner laden…</div>}>
+                  <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+                </Suspense>
+              </>
             )}
           </div>
         )}
@@ -639,6 +644,7 @@ function FutureTab({ storyId }: { storyId: string }) {
               key={sc.id}
               secret={sc}
               plans={plans}
+              storyId={storyId}
               currentChapter={nextChapter}
               revealed={sc.revealed}
               onChange={(patch) => updateSecret(storyId, sc.id, patch)}
@@ -708,22 +714,28 @@ function FuturePlanCard({
 }
 
 function SecretCard({
-  secret, plans, currentChapter, revealed, onChange, onDelete,
+  secret, plans, storyId, currentChapter, revealed, onChange, onDelete,
 }: {
   secret: SecretPlan;
   plans: FuturePlan[];
+  storyId: string;
   currentChapter: number;
   revealed: boolean;
   onChange: (patch: Partial<SecretPlan>) => void;
   onDelete: () => void;
 }) {
+  const story = useStoryStore((s) => s.stories.find((st) => st.id === storyId)!);
+  const [showTruth, setShowTruth] = useState(false);
   const numOrUndef = (v: string) => (v === "" ? undefined : Math.max(1, parseInt(v, 10) || 1));
+  const { triggers, willReveal } = explainSecretTriggers(secret, story, currentChapter);
   return (
-    <div className={`bg-card border rounded-xl p-4 space-y-2 ${revealed ? "border-gold/60" : "border-border"}`}>
+    <div className={`bg-card border rounded-xl p-4 space-y-2 ${revealed ? "border-gold/60" : willReveal ? "border-amber-500/60" : "border-border"}`}>
       <div className="flex gap-2 items-center">
         <Input value={secret.title} onChange={(e) => onChange({ title: e.target.value })} className="font-display" />
         {revealed ? (
           <span className="text-xs px-2 py-0.5 rounded-full bg-gold/20 text-gold whitespace-nowrap">Onthuld{secret.revealedInChapter ? ` h${secret.revealedInChapter}` : ""}</span>
+        ) : willReveal ? (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 whitespace-nowrap">Klaar om te lekken</span>
         ) : (
           <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">Verborgen</span>
         )}
@@ -755,6 +767,45 @@ function SecretCard({
         <Label className="text-xs">Na tijdlijn-gebeurtenis (bevat)</Label>
         <Input value={secret.revealAfterEvent ?? ""} onChange={(e) => onChange({ revealAfterEvent: e.target.value || undefined })} placeholder="bv. 'de kroning'" />
       </div>
+
+      {/* Trigger preview */}
+      <div className="rounded-md border border-border bg-secondary/30 p-3 mt-2 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">Trigger-status voor hoofdstuk {currentChapter}</span>
+          <button
+            type="button"
+            className="text-xs text-gold hover:underline"
+            onClick={() => setShowTruth((v) => !v)}
+          >
+            {showTruth ? "Verberg waarheid" : "Preview: laat waarheid zien"}
+          </button>
+        </div>
+        <ul className="space-y-1 text-xs">
+          {triggers.map((t, i) => (
+            <li key={i} className={`flex items-start gap-2 ${t.met ? "text-emerald-500" : "text-muted-foreground"}`}>
+              <span className="mt-0.5">{t.met ? "✓" : "○"}</span>
+              <span className="flex-1">
+                <span className="text-foreground/90">{t.label}</span>
+                {t.detail && <span className="opacity-70"> — {t.detail}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="text-xs pt-1 border-t border-border/60">
+          <span className="text-muted-foreground">Wat de AI in dit hoofdstuk ziet: </span>
+          {willReveal ? (
+            <span className="text-amber-500">volledige waarheid mag lekken</span>
+          ) : (
+            <span className="text-emerald-500">alleen dat er een verborgen laag is (spoiler beschermd)</span>
+          )}
+        </div>
+        {showTruth && (
+          <div className="text-xs bg-background/60 border border-border rounded p-2 mt-1 font-mono whitespace-pre-wrap">
+            {secret.truth || <em className="text-muted-foreground">Nog geen waarheid ingevuld.</em>}
+          </div>
+        )}
+      </div>
+
       {revealed && (
         <Button size="sm" variant="ghost" onClick={() => onChange({ revealed: false, revealedInChapter: undefined })}>
           Terug naar verborgen

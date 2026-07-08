@@ -53,7 +53,7 @@ export function WelcomeScreen() {
             ))}
           </div>
           <div className="flex flex-col gap-2 w-full">
-            <Button variant="hero" size="lg" onClick={() => { dismiss(); navigate({ to: "/auth" }); }}>
+            <Button variant="hero" size="lg" onClick={() => { dismiss(); navigate({ to: "/auth", search: { next: "" } }); }}>
               {t("btn.get_started")}
             </Button>
             <Button variant="ghost" size="sm" onClick={dismiss}>
