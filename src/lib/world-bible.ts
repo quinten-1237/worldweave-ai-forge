@@ -91,6 +91,9 @@ export function explainSecretTriggers(
     });
   }
   return { triggers, willReveal: shouldRevealSecret(secret, story, chapterNumber) };
+}
+
+
 
 function futureLine(p: FuturePlan): string {
   const parts = [`[${p.kind}] ${p.title} (status: ${p.status})`];
