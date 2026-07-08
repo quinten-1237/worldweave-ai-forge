@@ -24,7 +24,8 @@ import { CHARACTER_TYPES, CHARACTER_TYPE_LABELS, TYPE_FIELDS, type CharacterType
 
 import { ImageUploader } from "@/components/ImageUploader";
 import { buildPreviousSummary } from "@/lib/story-context";
-import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
+import { buildWorldBible, partitionSecrets, explainSecretTriggers } from "@/lib/world-bible";
+import { WorldBiblePreviewButton } from "@/components/WorldBiblePreview";
 import { exportTxt, exportJson, exportHtml } from "@/lib/export";
 import { deriveContinuity, continuityToText } from "@/lib/continuity";
 import { type ChapterPlan, planToInstructions, LENGTH_WORDS, resolvePlanedAssignments } from "@/lib/chapter-plan";
@@ -297,10 +298,14 @@ function ChaptersTab({ storyId, search }: { storyId: string; search: string }) {
               )}
             {(story.chapters.length > 0 ||
               (story.beginningState?.trim() && story.endGoal?.trim())) && (
-              <Suspense fallback={<div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Planner laden…</div>}>
-                <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
-              </Suspense>
-
+              <>
+                <div className="flex justify-end">
+                  <WorldBiblePreviewButton storyId={storyId} />
+                </div>
+                <Suspense fallback={<div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Planner laden…</div>}>
+                  <ChapterPlanner storyId={storyId} generating={generating} onGenerate={generate} />
+                </Suspense>
+              </>
             )}
           </div>
         )}
