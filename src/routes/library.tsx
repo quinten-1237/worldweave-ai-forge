@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { StoryCard } from "@/components/StoryCard";
 import { Button } from "@/components/ui/button";
 import { useStoryStore } from "@/store/storyStore";
-import { importJsonFile } from "@/lib/export";
+import { ImportStoryDialog } from "@/components/ImportStoryDialog";
 import { Plus, Upload } from "lucide-react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/library")({
   head: () => ({ meta: [{ title: "Mijn Verhalen — StoryForge AI" }] }),
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/library")({
 
 function Library() {
   const stories = useStoryStore((s) => s.stories);
-  const importStory = useStoryStore((s) => s.importStory);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <AppShell>
@@ -25,16 +25,7 @@ function Library() {
             <p className="text-muted-foreground mt-1">{stories.length} opgeslagen</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={async () => {
-                const s = await importJsonFile();
-                if (s) {
-                  importStory(s);
-                  toast.success("Verhaal geïmporteerd");
-                } else toast.error("Kon bestand niet lezen");
-              }}
-            >
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload /> Importeer
             </Button>
             <Button asChild variant="hero">
@@ -50,6 +41,7 @@ function Library() {
           </div>
         )}
       </div>
+      <ImportStoryDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </AppShell>
   );
 }
