@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as ImportTestsRouteImport } from './routes/import-tests'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -41,6 +42,11 @@ const McpRoute = McpRouteImport.update({
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportTestsRoute = ImportTestsRouteImport.update({
+  id: '/import-tests',
+  path: '/import-tests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritesRoute = FavoritesRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/favorites': typeof FavoritesRoute
+  '/import-tests': typeof ImportTestsRoute
   '/library': typeof LibraryRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/favorites': typeof FavoritesRoute
+  '/import-tests': typeof ImportTestsRoute
   '/library': typeof LibraryRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/favorites': typeof FavoritesRoute
+  '/import-tests': typeof ImportTestsRoute
   '/library': typeof LibraryRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/favorites'
+    | '/import-tests'
     | '/library'
     | '/mcp'
     | '/new'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/favorites'
+    | '/import-tests'
     | '/library'
     | '/mcp'
     | '/new'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/favorites'
+    | '/import-tests'
     | '/library'
     | '/mcp'
     | '/new'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   FavoritesRoute: typeof FavoritesRoute
+  ImportTestsRoute: typeof ImportTestsRoute
   LibraryRoute: typeof LibraryRoute
   McpRoute: typeof McpRoute
   NewRoute: typeof NewRoute
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/library'
       fullPath: '/library'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import-tests': {
+      id: '/import-tests'
+      path: '/import-tests'
+      fullPath: '/import-tests'
+      preLoaderRoute: typeof ImportTestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favorites': {
@@ -312,6 +332,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   FavoritesRoute: FavoritesRoute,
+  ImportTestsRoute: ImportTestsRoute,
   LibraryRoute: LibraryRoute,
   McpRoute: McpRoute,
   NewRoute: NewRoute,
