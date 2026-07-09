@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, Loader2, RotateCcw, ShieldAlert, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, FileText, Loader2, RotateCcw, ShieldAlert, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useStoryStore } from "@/store/storyStore";
-import { readImportFile, type ImportPreview } from "@/lib/story-import";
+import { readImportFile, type DiagEntry, type ImportPreview } from "@/lib/story-import";
 import { saveStoryToCloud, saveStoryBackup } from "@/lib/story-sync.functions";
 import { useServerFn } from "@tanstack/react-start";
 import type { Story } from "@/types/story";
@@ -31,8 +31,12 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [mode, setMode] = useState<Mode>("new");
   const [replaceTarget, setReplaceTarget] = useState<string>("");
+  const [diagnostics, setDiagnostics] = useState<DiagEntry[]>([]);
+  const [showDiag, setShowDiag] = useState(false);
   const cloudSave = useServerFn(saveStoryToCloud);
   const cloudBackup = useServerFn(saveStoryBackup);
+
+  const pushDiag = (entry: DiagEntry) => setDiagnostics((prev) => [...prev, entry]);
 
   const reset = () => {
     setPhase("pick");
@@ -40,6 +44,8 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
     setPreview(null);
     setMode("new");
     setReplaceTarget("");
+    setDiagnostics([]);
+    setShowDiag(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -53,13 +59,19 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setError(null);
+    setDiagnostics([]);
     setPhase("validating");
     try {
-      const p = await readImportFile(file);
+      const p = await readImportFile(file, (level, step, message, data) =>
+        pushDiag({ ts: Date.now(), level, step, message, data }),
+      );
       setPreview(p);
       setPhase("preview");
     } catch (e) {
-      setError((e as Error).message);
+      const err = e as Error & { diagnostics?: DiagEntry[] };
+      if (err.diagnostics) setDiagnostics(err.diagnostics);
+      setError(err.message);
+      setShowDiag(true);
       setPhase("error");
     }
   };
@@ -69,17 +81,20 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
     setPhase("importing");
     setError(null);
     const story = preview.story;
+    const now = () => ({ ts: Date.now(), level: "info" as const });
     try {
       if (mode === "replace") {
         if (!replaceTarget) throw new Error("Kies eerst welk verhaal je wilt vervangen.");
-        // 1. Backup the target so nothing is truly lost.
+        pushDiag({ ...now(), step: "backup", message: `Veiligheidsbackup maken voor ${replaceTarget}` });
         try {
           await cloudBackup({ data: { storyId: replaceTarget, kind: "pre-restore", label: `Voor import van ${preview.sourceName}` } });
+          pushDiag({ ts: Date.now(), level: "success", step: "backup", message: "Backup opgeslagen in Supabase story_backups" });
         } catch (e) {
-          // If the backup fails we STOP — refuse to overwrite without a safety net.
+          pushDiag({ ts: Date.now(), level: "error", step: "backup", message: (e as Error).message });
           throw new Error("Kon geen veiligheidsbackup maken; import afgebroken. " + (e as Error).message);
         }
         const replaced: Story = { ...story, id: replaceTarget, updatedAt: Date.now() };
+        pushDiag({ ...now(), step: "cloud-save", message: `Verhaal upserten in stories (id=${replaceTarget})` });
         await cloudSave({
           data: {
             id: replaceTarget,
@@ -90,12 +105,12 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
             writeVersion: true,
           },
         });
-        // Update local cache (backup already ensures rollback path)
+        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: upsert OK + versie geschreven" });
         updateStory(replaceTarget, replaced);
       } else {
-        // NEW — always give a fresh id so we never collide with an existing story.
         const newId = crypto.randomUUID();
         const fresh: Story = { ...story, id: newId, updatedAt: Date.now(), createdAt: Date.now() };
+        pushDiag({ ...now(), step: "cloud-save", message: `Nieuw verhaal insert (id=${newId})` });
         await cloudSave({
           data: {
             id: newId,
@@ -106,14 +121,16 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
             writeVersion: true,
           },
         });
+        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: insert OK + versie geschreven" });
         importStory(fresh);
       }
       setPhase("done");
       toast.success("Verhaal geïmporteerd");
     } catch (e) {
+      pushDiag({ ts: Date.now(), level: "error", step: "cloud-save", message: (e as Error).message });
       setError((e as Error).message);
+      setShowDiag(true);
       setPhase("error");
-      // Explicitly do NOT sign the user out; do NOT redirect anywhere.
     }
   };
 
@@ -211,7 +228,35 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
               </div>
             </div>
           )}
+
+          {diagnostics.length > 0 && phase !== "pick" && (
+            <div className="rounded-md border border-border bg-secondary/20">
+              <button
+                type="button"
+                onClick={() => setShowDiag((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium hover:bg-secondary/40"
+              >
+                <span>Diagnostiek ({diagnostics.length} stappen — {diagnostics.filter((d) => d.level === "error").length} fout)</span>
+                {showDiag ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showDiag && (
+                <div className="border-t border-border px-3 py-2 max-h-48 overflow-y-auto scrollbar-thin space-y-1 font-mono text-[11px]">
+                  {diagnostics.map((d, i) => (
+                    <div key={i} className={
+                      d.level === "error" ? "text-destructive" :
+                      d.level === "warn" ? "text-amber-500" :
+                      d.level === "success" ? "text-emerald-500" : "text-muted-foreground"
+                    }>
+                      <span className="opacity-60">{new Date(d.ts).toLocaleTimeString()}</span>
+                      {" "}[{d.step}] {d.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
 
         {phase === "preview" && preview && (
           <div className="p-5 border-t border-border flex flex-wrap justify-end gap-2">

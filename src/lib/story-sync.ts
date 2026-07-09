@@ -113,9 +113,11 @@ const pendingRetry = new Set<string>();
 function scheduleSave(storyId: string) {
   const existing = debounceTimers.get(storyId);
   if (existing) clearTimeout(existing);
+  // Autosave elke 2 minuten in plaats van bij elke wijziging — minder cloud-writes,
+  // rustiger dashboard en de gebruiker heeft nooit meer dan 2 min werk in gevaar.
   const t = setTimeout(() => {
     void flushSave(storyId);
-  }, 800);
+  }, 120_000);
   debounceTimers.set(storyId, t);
 }
 

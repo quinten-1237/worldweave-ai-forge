@@ -1,8 +1,20 @@
 import { useState } from "react";
-import { BookOpen, Eye, EyeOff, X } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStoryStore } from "@/store/storyStore";
 import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
+
+function downloadTextFile(name: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /**
  * Modal die exact toont wat de AI ziet vóór het schrijven van het volgende hoofdstuk:
@@ -37,6 +49,19 @@ export function WorldBiblePreviewButton({ storyId }: { storyId: string }) {
                 <h2 className="font-display text-xl gradient-gold-text">World Bible — hoofdstuk {nextChapter}</h2>
                 <p className="text-xs text-muted-foreground">Exact wat de AI leest voordat het volgende hoofdstuk wordt geschreven.</p>
               </div>
+              <Button variant="outline" size="sm" onClick={() => {
+                const header = `# World Bible — ${story.title}\n# Volgend hoofdstuk: ${nextChapter}\n# Geëxporteerd: ${new Date().toISOString()}\n\n`;
+                const hiddenBlock = hidden.length
+                  ? `\n\n---\nVERBORGEN GEHEIMEN (NIET aan AI meegegeven):\n${hidden.map((s) => `- ${s.title}: ${s.truth}`).join("\n")}\n`
+                  : "";
+                const unlockBlock = unlockable.length
+                  ? `\n\n---\nONTHULBARE GEHEIMEN (mag AI zien):\n${unlockable.map((s) => `- ${s.title}: ${s.truth}`).join("\n")}\n`
+                  : "";
+                const safeTitle = story.title.replace(/[^\w-]+/g, "_").slice(0, 40) || "story";
+                downloadTextFile(`world-bible_${safeTitle}_h${nextChapter}.txt`, header + bible + unlockBlock + hiddenBlock);
+              }}>
+                <Download /> Export
+              </Button>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><X /></Button>
             </div>
             <div className="overflow-y-auto scrollbar-thin p-5 space-y-4">
