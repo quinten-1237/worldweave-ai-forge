@@ -81,17 +81,20 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
     setPhase("importing");
     setError(null);
     const story = preview.story;
+    const now = () => ({ ts: Date.now(), level: "info" as const });
     try {
       if (mode === "replace") {
         if (!replaceTarget) throw new Error("Kies eerst welk verhaal je wilt vervangen.");
-        // 1. Backup the target so nothing is truly lost.
+        pushDiag({ ...now(), step: "backup", message: `Veiligheidsbackup maken voor ${replaceTarget}` });
         try {
           await cloudBackup({ data: { storyId: replaceTarget, kind: "pre-restore", label: `Voor import van ${preview.sourceName}` } });
+          pushDiag({ ts: Date.now(), level: "success", step: "backup", message: "Backup opgeslagen in Supabase story_backups" });
         } catch (e) {
-          // If the backup fails we STOP — refuse to overwrite without a safety net.
+          pushDiag({ ts: Date.now(), level: "error", step: "backup", message: (e as Error).message });
           throw new Error("Kon geen veiligheidsbackup maken; import afgebroken. " + (e as Error).message);
         }
         const replaced: Story = { ...story, id: replaceTarget, updatedAt: Date.now() };
+        pushDiag({ ...now(), step: "cloud-save", message: `Verhaal upserten in stories (id=${replaceTarget})` });
         await cloudSave({
           data: {
             id: replaceTarget,
@@ -102,12 +105,12 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
             writeVersion: true,
           },
         });
-        // Update local cache (backup already ensures rollback path)
+        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: upsert OK + versie geschreven" });
         updateStory(replaceTarget, replaced);
       } else {
-        // NEW — always give a fresh id so we never collide with an existing story.
         const newId = crypto.randomUUID();
         const fresh: Story = { ...story, id: newId, updatedAt: Date.now(), createdAt: Date.now() };
+        pushDiag({ ...now(), step: "cloud-save", message: `Nieuw verhaal insert (id=${newId})` });
         await cloudSave({
           data: {
             id: newId,
@@ -118,14 +121,16 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
             writeVersion: true,
           },
         });
+        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: insert OK + versie geschreven" });
         importStory(fresh);
       }
       setPhase("done");
       toast.success("Verhaal geïmporteerd");
     } catch (e) {
+      pushDiag({ ts: Date.now(), level: "error", step: "cloud-save", message: (e as Error).message });
       setError((e as Error).message);
+      setShowDiag(true);
       setPhase("error");
-      // Explicitly do NOT sign the user out; do NOT redirect anywhere.
     }
   };
 
