@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, Loader2, RotateCcw, ShieldAlert, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, FileText, Loader2, RotateCcw, ShieldAlert, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useStoryStore } from "@/store/storyStore";
-import { readImportFile, type ImportPreview } from "@/lib/story-import";
+import { readImportFile, type DiagEntry, type ImportPreview } from "@/lib/story-import";
 import { saveStoryToCloud, saveStoryBackup } from "@/lib/story-sync.functions";
 import { useServerFn } from "@tanstack/react-start";
 import type { Story } from "@/types/story";
@@ -31,8 +31,12 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [mode, setMode] = useState<Mode>("new");
   const [replaceTarget, setReplaceTarget] = useState<string>("");
+  const [diagnostics, setDiagnostics] = useState<DiagEntry[]>([]);
+  const [showDiag, setShowDiag] = useState(false);
   const cloudSave = useServerFn(saveStoryToCloud);
   const cloudBackup = useServerFn(saveStoryBackup);
+
+  const pushDiag = (entry: DiagEntry) => setDiagnostics((prev) => [...prev, entry]);
 
   const reset = () => {
     setPhase("pick");
@@ -40,6 +44,8 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
     setPreview(null);
     setMode("new");
     setReplaceTarget("");
+    setDiagnostics([]);
+    setShowDiag(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -53,13 +59,19 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setError(null);
+    setDiagnostics([]);
     setPhase("validating");
     try {
-      const p = await readImportFile(file);
+      const p = await readImportFile(file, (level, step, message, data) =>
+        pushDiag({ ts: Date.now(), level, step, message, data }),
+      );
       setPreview(p);
       setPhase("preview");
     } catch (e) {
-      setError((e as Error).message);
+      const err = e as Error & { diagnostics?: DiagEntry[] };
+      if (err.diagnostics) setDiagnostics(err.diagnostics);
+      setError(err.message);
+      setShowDiag(true);
       setPhase("error");
     }
   };
