@@ -228,7 +228,35 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
               </div>
             </div>
           )}
+
+          {diagnostics.length > 0 && phase !== "pick" && (
+            <div className="rounded-md border border-border bg-secondary/20">
+              <button
+                type="button"
+                onClick={() => setShowDiag((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium hover:bg-secondary/40"
+              >
+                <span>Diagnostiek ({diagnostics.length} stappen — {diagnostics.filter((d) => d.level === "error").length} fout)</span>
+                {showDiag ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showDiag && (
+                <div className="border-t border-border px-3 py-2 max-h-48 overflow-y-auto scrollbar-thin space-y-1 font-mono text-[11px]">
+                  {diagnostics.map((d, i) => (
+                    <div key={i} className={
+                      d.level === "error" ? "text-destructive" :
+                      d.level === "warn" ? "text-amber-500" :
+                      d.level === "success" ? "text-emerald-500" : "text-muted-foreground"
+                    }>
+                      <span className="opacity-60">{new Date(d.ts).toLocaleTimeString()}</span>
+                      {" "}[{d.step}] {d.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
 
         {phase === "preview" && preview && (
           <div className="p-5 border-t border-border flex flex-wrap justify-end gap-2">
