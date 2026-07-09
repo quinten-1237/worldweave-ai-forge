@@ -1,8 +1,20 @@
 import { useState } from "react";
-import { BookOpen, Eye, EyeOff, X } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStoryStore } from "@/store/storyStore";
 import { buildWorldBible, partitionSecrets } from "@/lib/world-bible";
+
+function downloadTextFile(name: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /**
  * Modal die exact toont wat de AI ziet vóór het schrijven van het volgende hoofdstuk:
