@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useStoryStore } from "@/store/storyStore";
 import { readImportFile, type DiagEntry, type ImportPreview } from "@/lib/story-import";
-import { useServerFn } from "@tanstack/react-start";
 import type { Story } from "@/types/story";
 import { toast } from "sonner";
 
@@ -158,7 +157,7 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
           {phase === "importing" && (
             <div className="p-8 text-center text-muted-foreground text-sm">
               <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
-              Verhaal opslaan in de cloud…
+              Verhaal lokaal opslaan…
               <p className="text-xs mt-2">Als er iets misgaat: je sessie blijft actief en niets wordt half opgeslagen.</p>
             </div>
           )}
@@ -167,7 +166,7 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
             <div className="p-6 text-center space-y-3">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
               <p className="font-display text-lg">Verhaal geïmporteerd</p>
-              <p className="text-sm text-muted-foreground">"{preview.story.title}" staat nu in je bibliotheek en is opgeslagen in de cloud.</p>
+              <p className="text-sm text-muted-foreground">"{preview.story.title}" staat nu in je bibliotheek en is lokaal opgeslagen.</p>
               <Button variant="hero" onClick={closeAll}>Naar bibliotheek</Button>
             </div>
           )}
