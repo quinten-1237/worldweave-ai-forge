@@ -11,7 +11,6 @@ import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
 import { useSyncProfileToUI } from "@/lib/profile";
-import { useCloudSync } from "@/lib/story-sync";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 
 function NotFoundComponent() {
@@ -123,7 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function ProfileSyncer() { useSyncProfileToUI(); return null; }
-function CloudSyncer() { useCloudSync(); return null; }
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -133,7 +131,6 @@ function RootComponent() {
         <I18nProvider>
           <AuthProvider>
             <ProfileSyncer />
-            <CloudSyncer />
             <Outlet />
             <WelcomeScreen />
             <Toaster theme="dark" position="bottom-right" richColors />

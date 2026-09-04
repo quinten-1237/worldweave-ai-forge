@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useStoryStore } from "@/store/storyStore";
 import { readImportFile, type DiagEntry, type ImportPreview } from "@/lib/story-import";
-import { saveStoryToCloud, saveStoryBackup } from "@/lib/story-sync.functions";
 import { useServerFn } from "@tanstack/react-start";
 import type { Story } from "@/types/story";
 import { toast } from "sonner";
@@ -33,8 +32,6 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
   const [replaceTarget, setReplaceTarget] = useState<string>("");
   const [diagnostics, setDiagnostics] = useState<DiagEntry[]>([]);
   const [showDiag, setShowDiag] = useState(false);
-  const cloudSave = useServerFn(saveStoryToCloud);
-  const cloudBackup = useServerFn(saveStoryBackup);
 
   const pushDiag = (entry: DiagEntry) => setDiagnostics((prev) => [...prev, entry]);
 
@@ -85,49 +82,21 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
     try {
       if (mode === "replace") {
         if (!replaceTarget) throw new Error("Kies eerst welk verhaal je wilt vervangen.");
-        pushDiag({ ...now(), step: "backup", message: `Veiligheidsbackup maken voor ${replaceTarget}` });
-        try {
-          await cloudBackup({ data: { storyId: replaceTarget, kind: "pre-restore", label: `Voor import van ${preview.sourceName}` } });
-          pushDiag({ ts: Date.now(), level: "success", step: "backup", message: "Backup opgeslagen in Supabase story_backups" });
-        } catch (e) {
-          pushDiag({ ts: Date.now(), level: "error", step: "backup", message: (e as Error).message });
-          throw new Error("Kon geen veiligheidsbackup maken; import afgebroken. " + (e as Error).message);
-        }
         const replaced: Story = { ...story, id: replaceTarget, updatedAt: Date.now() };
-        pushDiag({ ...now(), step: "cloud-save", message: `Verhaal upserten in stories (id=${replaceTarget})` });
-        await cloudSave({
-          data: {
-            id: replaceTarget,
-            title: replaced.title,
-            data: replaced as unknown as Record<string, unknown>,
-            isFavorite: !!replaced.favorite,
-            summary: `Vervangen door import: ${preview.sourceName}`,
-            writeVersion: true,
-          },
-        });
-        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: upsert OK + versie geschreven" });
+        pushDiag({ ...now(), step: "local-save", message: `Verhaal overschrijven in lokale opslag (id=${replaceTarget})` });
         updateStory(replaceTarget, replaced);
+        pushDiag({ ts: Date.now(), level: "success", step: "local-save", message: "Lokaal opgeslagen (localStorage)" });
       } else {
         const newId = crypto.randomUUID();
         const fresh: Story = { ...story, id: newId, updatedAt: Date.now(), createdAt: Date.now() };
-        pushDiag({ ...now(), step: "cloud-save", message: `Nieuw verhaal insert (id=${newId})` });
-        await cloudSave({
-          data: {
-            id: newId,
-            title: fresh.title,
-            data: fresh as unknown as Record<string, unknown>,
-            isFavorite: false,
-            summary: `Geïmporteerd uit ${preview.sourceName}`,
-            writeVersion: true,
-          },
-        });
-        pushDiag({ ts: Date.now(), level: "success", step: "cloud-save", message: "Supabase: insert OK + versie geschreven" });
+        pushDiag({ ...now(), step: "local-save", message: `Nieuw verhaal lokaal opslaan (id=${newId})` });
         importStory(fresh);
+        pushDiag({ ts: Date.now(), level: "success", step: "local-save", message: "Lokaal opgeslagen (localStorage)" });
       }
       setPhase("done");
       toast.success("Verhaal geïmporteerd");
     } catch (e) {
-      pushDiag({ ts: Date.now(), level: "error", step: "cloud-save", message: (e as Error).message });
+      pushDiag({ ts: Date.now(), level: "error", step: "local-save", message: (e as Error).message });
       setError((e as Error).message);
       setShowDiag(true);
       setPhase("error");
@@ -143,7 +112,7 @@ export function ImportStoryDialog({ open, onClose }: { open: boolean; onClose: (
           <Upload className="h-5 w-5 text-gold" />
           <div className="flex-1">
             <h2 className="font-display text-xl gradient-gold-text">Verhaal importeren</h2>
-            <p className="text-xs text-muted-foreground">JSON of PDF — bekijk eerst een preview voordat er iets wordt opgeslagen.</p>
+            <p className="text-xs text-muted-foreground">JSON of PDF — bekijk eerst een preview voordat er iets lokaal wordt opgeslagen.</p>
           </div>
           <Button variant="ghost" size="icon" onClick={closeAll}><X /></Button>
         </div>
