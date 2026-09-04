@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { Story, Character, Location, Faction, Chapter, TimelineEvent, StoryRelationship, FuturePlan, SecretPlan } from "@/types/story";
 import type { ChapterPlan, ChapterPreset, RelationshipChange } from "@/lib/chapter-plan";
 
@@ -58,6 +59,7 @@ interface State {
 
 
 export const useStoryStore = create<State>()(
+  persist(
   (set, get) => ({
       stories: [],
 
@@ -417,5 +419,11 @@ export const useStoryStore = create<State>()(
       importStory: (story) =>
         set((s) => ({ stories: [{ ...story, id: uid() }, ...s.stories] })),
     }),
+  {
+    name: "storyforge:stories",
+    version: 1,
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({ stories: state.stories }),
+  },
+  ),
 );
-
